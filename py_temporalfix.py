@@ -170,8 +170,8 @@ def main():
     frame: bytes = None
     line: str = ''
     os.set_blocking(encoder_subprocess.stdout.fileno(), False)
-    for i in range(frame_count):
-        print(f"reading frame no. {i}", end="\r")
+    for _ in range(frame_count):
+        # print(f"reading frame no. {i}", end="\r")
         frame: bytes = vs_subprocess.stdout.read(in_nbytes)
         if frame is None:
             print(red("None"))
