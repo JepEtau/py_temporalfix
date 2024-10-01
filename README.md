@@ -16,7 +16,7 @@ _This project is highly experimental: only critical bugs may be corrected and ne
 
 
 ## Basic usage
-`python py_temporal_fix.py --input input_video.mkv --output output_video.mkv --radius 6 --strength 300`
+`python py_temporalfix.py --input input_video.mkv --output output_video.mkv --radius 6 --strength 300`
 
 &nbsp;
 
@@ -55,7 +55,7 @@ This will install the required python packages. FFmpeg and a vs (portable) envir
 
 ## Usage
 
-`python py_temporal_fix.py --help`
+`python py_temporalfix.py --help`
 
 ### Input, output
 | Option&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| Description |
