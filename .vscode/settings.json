@@ -1,0 +1,26 @@
+{
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.mkv": true,
+        "**/*.mp4": true,
+        "**/*.png": true,
+        "**/*.so": true,
+        "**/*.exe": true,
+        "**/external": true,
+        "**/vspython": true,
+    },
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": false,
+    "files.trimTrailingWhitespace": true,
+
+    "[markdown]": {
+        "files.trimTrailingWhitespace": false
+    },
+
+    "[python]": {
+        "editor.rulers": [
+            90,
+            120
+        ]
+    },
+}
