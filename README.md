@@ -6,11 +6,17 @@ _This project is highly experimental: only critical bugs may be corrected and ne
 &nbsp;
 
 ## Table of Contents
+- [Basic usage](#Basic-usage)
 - [Requirements](#Requirements)
 - [Installation](#Installation)
-- [Basic usage](#Basic-usage)
 - [Usage](#Usage)
 - [Manual installation](#Manual-installation)
+
+&nbsp;
+
+
+## Basic usage
+`python py_temporal_fix.py --input input_video.mkv --output output_video.mkv --radius 6 --strength 300`
 
 &nbsp;
 
@@ -45,12 +51,6 @@ This will install the required python packages. FFmpeg and a vs (portable) envir
 > As this script is highly experimental, in case of any problem with the installation, follow these [instructions](#Manual-installation). I won't provide any help with vs/python. Never.
 
 - (Optional) **Update vs_temporal_fix script**: download the script from the [author's github repo](https://github.com/pifroggi/vs_temporalfix) to the root of this project.
-
-
-## Basic usage
-`python py_temporal_fix.py --input input_video.mkv --output output_video.mkv --radius 6 --strength 300`
-
-The output filename can be omitted. In this case, it appends a suffix to the input filename.
 
 
 ## Usage
