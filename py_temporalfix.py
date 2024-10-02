@@ -118,7 +118,11 @@ def main():
         'bpp': PIXEL_FORMAT[vs_out_pix_fmt]['pipe_bpp'],
         'c_order': vs_c_order,
         'pix_fmt': vs_out_pix_fmt,
+        'metadata': {
+            'vs_temporal_fix': f"tr={arguments.radius}, strength={arguments.strength}"
+        }
     })
+
     if debug:
         print(lightcyan("Video info after vs script:"))
         pprint(vs_video_info)

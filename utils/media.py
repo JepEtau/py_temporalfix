@@ -162,11 +162,16 @@ def extract_media_info(media_filepath: str) -> MediaInfo:
         'metadata': v_stream.get('tags', None),
     }
 
-    for tag_name in ['DURATION', 'ENCODER']:
-        try:
-            del video_info['metadata'][tag_name]
-        except:
-            pass
+    if isinstance(video_info['metadata'], dict):
+        tags_to_remove: tuple[str] = (
+            'duration', 'encoder', 'creation_time', 'handler_name', 'vendor_id'
+        )
+        for tag_name in list(video_info['metadata'].keys()).copy():
+            if tag_name.lower() in tags_to_remove:
+                try:
+                    del video_info['metadata'][tag_name]
+                except:
+                    pass
 
     # Is interlaced?
     if (fo := v_stream.get('field_order', None)):
