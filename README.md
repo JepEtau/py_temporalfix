@@ -18,13 +18,15 @@ _This project is highly experimental: only critical bugs may be corrected and ne
 ## Basic usage
 `python py_temporalfix.py --input input_video.mkv --output output_video.mkv --t_radius 6 --strength 300`
 
-Note: when the output container is Matroska (.mkv), the strength and temporal radius values are added to the output video metadata.
 &nbsp;
+
+_Note: when the output container is Matroska (.mkv), the strength and temporal radius values are added to the output video metadata._
 
 ## Requirements
 - Windows 11
 - Python 3.12
 
+&nbsp;
 
 ## Installation
 
@@ -53,6 +55,7 @@ This will install the required python packages. FFmpeg and a vs (portable) envir
 
 - (Optional) **Update vs_temporal_fix script**: download the script from the [author's github repo](https://github.com/pifroggi/vs_temporalfix) to the root of this project.
 
+&nbsp;
 
 ## Usage
 
@@ -64,7 +67,7 @@ This will install the required python packages. FFmpeg and a vs (portable) envir
 | `--input` | Path to the input video file  |
 | `--output`| Path to the output video file |
 | `--suffix`| Suffix used when no output filename is specified (default:  `_fixed`)|
-||
+
 
 ### Parameters passed to the script.
 For more details: [vs_temporalfix](https://github.com/pifroggi/vs_temporalfix)
@@ -73,7 +76,6 @@ For more details: [vs_temporalfix](https://github.com/pifroggi/vs_temporalfix)
 | :--- | :---: | :--- |
 | `--t_radius` | `6` | The temporal radius sets the number of frames to average over. Higher means more stable. If you get blending/ghosting on small movements or blocky artifacts, reduce this. |
 | `--strength` | `300` | Suppression strength of temporal inconsistencies. Higher means more aggressive. |
-||
 
 
 ### Video encoding
@@ -87,7 +89,6 @@ Parameters passed to the encoder. Refer to the [FFmpeg documentation](https://ff
 | `--crf`       |    `23`|  0 to 51  |
 | `--tune`      |  `film`, `animation`, `grain`, `stillimage`, `fastdecode`, `zerolatency`  |
 | `--ffmpeg_args` | `""` | Used to pass customized arguments to the encoder (FFmpeg). Override the previous options. This option must be double quoted. Example: `--ffmpeg_args "-preset veryfast"`|
-||
 
 
 ### Not yet supported:
@@ -96,8 +97,8 @@ Parameters passed to the encoder. Refer to the [FFmpeg documentation](https://ff
 | `-ss`     | hh:mm:ss.ms   | seek start            |
 | `-t`      | hh:mm:ss.ms   | duration              |
 | `-to`     | hh:mm:ss.ms   | position              |
-||
 
+&nbsp;
 
 ## Manual installation
 
