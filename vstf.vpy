@@ -1,6 +1,6 @@
 import os
 import sys
-if sys.platform != "win":
+if sys.platform != "win32":
     print(f"{sys.platform} is not supported", file=sys.stderr)
 from typing import Literal
 for subd in ("Scripts", "vs-scripts", "vs-plugins", ""):

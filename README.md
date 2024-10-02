@@ -11,6 +11,7 @@ _This project is highly experimental: only critical bugs may be corrected and ne
 - [Installation](#Installation)
 - [Usage](#Usage)
 - [Manual installation](#Manual-installation)
+- [Troubleshooting](#Troubleshooting)
 
 &nbsp;
 
@@ -114,3 +115,12 @@ Parameters passed to the encoder. Refer to the [FFmpeg documentation](https://ff
 
 Note: in case of any problem with vspython, create a portable python env and populate this env with vspipe.
      
+&nbsp;
+
+## Troubleshooting
+
+Append `--log` to the command line. The script:  
+- parses the script and display some info
+- displays the encoder command line
+- creates a log file in the `log` directory
+Please attach this log when reporting an issue

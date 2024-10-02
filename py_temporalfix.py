@@ -192,7 +192,7 @@ def main():
     vs_path: list[str] = []
     root_dir: str = os.path.dirname(os.path.abspath(__file__))
     sep: str = ";"
-    if sys.platform == "win":
+    if sys.platform == "win32":
         for dir in ("Scripts", "vs-scripts", "vs-plugins", ""):
             vs_path.insert(0, os.path.abspath(
                 os.path.join(root_dir, "external", "vspython", dir)
@@ -265,6 +265,7 @@ def main():
     frame: bytes = None
     line: str = ''
     os.set_blocking(encoder_subprocess.stdout.fileno(), False)
+    print(f"Processing:")
     for _ in range(frame_count):
         # print(f"reading frame no. {i}", end="\r")
         frame: bytes = vs_subprocess.stdout.read(in_nbytes)
@@ -301,7 +302,7 @@ def main():
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    if sys.platform not in ('win', 'linux'):
+    if sys.platform not in ('win32', 'linux'):
         sys.exit(f"{sys.platform} is not supported")
     main()
 
