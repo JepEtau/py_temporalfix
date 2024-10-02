@@ -1,35 +1,36 @@
 import subprocess
-from helpers.p_print import lightcyan
+import sys
+from .p_print import lightcyan
+from .logger import logger
 
 
 def extract_info_from_vs_script(
     vs_command: list[str],
     vs_env: dict[str, str]
 ) -> tuple[bool, dict[str, str] | None]:
-    print("Analyzing script...")
+    logger.debug("Analyzing script...")
     vs_info_command = vs_command + ["--info"]
-    # print(' '.join(vs_info_command))
+    logger.debug(' '.join(vs_info_command))
     vs_subprocess: subprocess.Popen | None = None
     try:
         vs_subprocess = subprocess.Popen(
             vs_info_command,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             env=vs_env,
         )
     except Exception as e:
-        print(f"[E] Unexpected error: {type(e)}", flush=True)
+        sys.exit(f"[E] Unexpected error: {type(e)}", flush=True)
 
-    stdout_bytes: bytes
-    stderr_bytes: bytes
-    stdout_bytes, stderr_bytes = vs_subprocess.communicate()
+    stdout_bytes: bytes = vs_subprocess.communicate()[0]
 
     info: dict[str, str] = {}
     if stdout_bytes is not None:
         stdout: str = stdout_bytes.decode('utf-8)')
 
-        print("Script info:")
+        logger.debug("Script info:")
+        print(lightcyan("Script info:"))
         for l in stdout.split('\n'):
             try:
                 k, v = l.split(':')
@@ -47,10 +48,11 @@ def extract_info_from_vs_script(
     else:
         return False, None
 
-    if stderr_bytes is not None:
-        stderr: str = stderr_bytes.decode('utf-8)')
-        if stderr:
-            print(stderr)
+    if stdout_bytes is not None:
+        stdout: str = stdout_bytes.decode('utf-8)')
+        logger.debug(stdout)
+        if 'failed' in stdout or 'not supported' in stdout:
+            sys.exit(f"Error while evaluating script:\n{stdout}")
             return False, info
 
     return True, info

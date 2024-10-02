@@ -1,28 +1,59 @@
-from copy import deepcopy
-import os
-import sys
-
 from argparse import Namespace
+from copy import deepcopy
+import logging
 import numpy as np
-from pprint import pprint
+import os
+from pprint import pformat, pprint
 import signal
 import subprocess
+import sys
 
-
-from utils.media import MediaInfo, VideoInfo, extract_media_info, get_media_info
-from utils.path_utils import absolute_path, is_access_granted, path_split
-from utils.p_print import *
 from utils.arg_parse import arg_parse
-from utils.encoder import VideoEncoderParams, arguments_to_encoder_params, generate_ffmpeg_encoder_cmd
+from utils.encoder import (
+    arguments_to_encoder_params,
+    generate_ffmpeg_encoder_cmd,
+    VideoEncoderParams,
+)
+from utils.logger import logger
+from utils.media import (
+    MediaInfo,
+    VideoInfo,
+    extract_media_info,
+    get_media_info,
+)
+from utils.path_utils import (
+    absolute_path,
+    is_access_granted,
+    os_path_basename,
+    path_split,
+)
 from utils.pxl_fmt import PIXEL_FORMAT
-
+from utils.p_print import *
+from utils.vsscript import extract_info_from_vs_script
 
 
 def main():
-
     # Parse arguments
     arguments: Namespace = arg_parse()
+    if arguments.log:
+        os.makedirs("logs", exist_ok=True)
+        log_dir: str = absolute_path(os.path.join("logs"))
+        log_filename: str = f"{os_path_basename(arguments.input)}.log"
+        logger.addHandler(
+            logging.FileHandler(os.path.join(log_dir, log_filename), mode="w")
+        )
+        logger.setLevel("DEBUG")
+        print(
+            lightcyan(f"Log saved in"), log_dir,
+            lightcyan("as:"), log_filename
+        )
+    else:
+        logger.setLevel("WARNING")
 
+    logger.debug(f"Python executable dir: {sys.executable}")
+    logger.debug(f"arguments: {sys.argv}")
+
+    debug: bool = arguments.debug
 
     # Check arguments validity
     in_media_path: str = absolute_path(arguments.input)
@@ -44,7 +75,8 @@ def main():
 
     print(lightcyan(f"Input video file:"), f"{in_media_path}")
     print(lightcyan(f"Output video file:"), f"{out_media_path}")
-
+    logger.debug(f"input: {in_media_path}")
+    logger.debug(f"output: {out_media_path}")
 
     # Open media file
     in_media_path: str = absolute_path(arguments.input)
@@ -52,14 +84,14 @@ def main():
     try:
         in_media_info = extract_media_info(in_media_path)
     except:
-        # debug:
-        pprint(get_media_info(in_media_path))
         sys.exit(f"[E] {in_media_path} is not a valid input media file")
-    if arguments.debug:
+    if debug:
         print(lightcyan("FFmpeg media info:"))
         pprint(get_media_info(in_media_path))
         print(lightcyan("Input media info:"))
         pprint(in_media_info)
+    logger.debug(f"FFmpeg media info:\n{pformat(get_media_info(in_media_path))}")
+    logger.debug(f"Input media info:\n{pformat(in_media_info)}")
     in_video_info: VideoInfo = in_media_info['video']
     in_video_info['filepath'] = in_media_path
 
@@ -71,7 +103,7 @@ def main():
         arguments=arguments,
         video_info=vs_video_info
     )
-    if arguments.debug:
+    if debug:
         print(lightcyan("Encoder params:"))
         pprint(e_params)
 
@@ -86,38 +118,45 @@ def main():
         'bpp': PIXEL_FORMAT[vs_out_pix_fmt]['pipe_bpp'],
         'c_order': vs_c_order,
         'pix_fmt': vs_out_pix_fmt,
+        'metadata': {
+            'vs_temporal_fix': f"tr={arguments.t_radius}, strength={arguments.strength}"
+        }
     })
-    if arguments.debug:
+
+    if debug:
         print(lightcyan("Video info after vs script:"))
         pprint(vs_video_info)
-
+    logger.debug(f"VS video info:\n{pformat(vs_video_info)}")
 
     # VSpipe command
     vspipe_exe: str = os.path.join(".", "external", "vspython", "VSpipe.exe")
+    if sys.platform == "linux":
+        vspipe_exe = "/usr/bin/vspipe"
+    if not os.path.isfile(vspipe_exe):
+        sys.exit("Error: VSpipe is not installed.")
+
     vs_command: list[str] = [
         vspipe_exe,
         "vstf.vpy",
         "--arg", f"input_fp=\"{arguments.input}\"",
-        "--arg", f"tr={arguments.radius}",
+        "--arg", f"tr={arguments.t_radius}",
         "--arg", f"strength={arguments.strength}",
         "--arg", f"pix_fmt={vs_out_pix_fmt}",
         "-",
     ]
-    if arguments.debug:
-        print(lightcyan("Vs command:"))
+    if debug:
+        print(lightcyan("VS command:"))
         print(lightgreen(' '.join(vs_command)))
+    logger.debug(f"VS command:\n{' '.join(vs_command)}")
 
 
     # Encoder command
+    logger.debug(f"Encoder params:\n{pformat(e_params)}")
     encoder_command: list[str] = generate_ffmpeg_encoder_cmd(
         video_info=vs_video_info,
         params=e_params,
         in_media_info=in_media_info,
     )
-    if arguments.debug:
-        print(lightcyan("Encoder command:"))
-        print(lightgreen(' '.join(encoder_command)))
-
 
     # Encoder process
     encoder_subprocess: subprocess.Popen | None = None
@@ -133,18 +172,69 @@ def main():
     if encoder_subprocess is None:
         sys.exit(red(f"[E] Encoder process is not started"))
 
+    # Clean environment for vspython
+    # vs_path: list[str] = []
+    forbidden_names: tuple[str] = (
+        'python',
+        'conda',
+        'vapoursynth',
+        'ffmpeg',
+    )
+    # for p in sys.path:
+    #     if not p:
+    #         continue
+    #     p_lower = p.lower()
+    #     for n in forbidden_names:
+    #         if n in p_lower:
+    #             vs_path.append(p)
+
+    # Create path used by vs subprocess
+    vs_path: list[str] = []
+    root_dir: str = os.path.dirname(os.path.abspath(__file__))
+    sep: str = ";"
+    if sys.platform == "win32":
+        for dir in ("Scripts", "vs-scripts", "vs-plugins", ""):
+            vs_path.insert(0, os.path.abspath(
+                os.path.join(root_dir, "external", "vspython", dir)
+            ))
+
+    elif sys.platform == "linux":
+        for dir in (
+            "/usr/lib/x86_64-linux-gnu/vapoursynth",
+            "/usr/lib/bin"
+        ):
+            vs_path.insert(0, dir)
+        sep = ':'
+
+    vs_path.insert(0, root_dir)
+
+    # Clean environnment for vs
+    vs_env = os.environ.copy()
+    del vs_env['PATH']
+    for k, v in vs_env.copy().items():
+        k_lower, v_lower = k.lower(), v.lower()
+        for n in forbidden_names:
+            if n in k_lower:
+                try:
+                    del vs_env[k]
+                    logger.debug(f"removing: {k}: {v}")
+                except:
+                    pass
+
+            if n in v_lower:
+                try:
+                    del vs_env[k]
+                    logger.debug(f"removing: {k}: {v}")
+                except:
+                    pass
+    vs_env['PATH'] = sep.join(vs_path)
+
+    logger.debug(f"Environment:\n{pformat(vs_env)}")
+    # Environnment
+    if arguments.log or debug:
+        extract_info_from_vs_script(vs_command=vs_command, vs_env=vs_env)
 
     # Vs process
-    # Clean environment for vspython
-    vs_env = os.environ.copy()
-    for k, v in vs_env.copy().items():
-        if "conda" in k.lower():
-            del vs_env[k]
-
-        # TODO: to be verified:
-        elif "python" in v.lower():
-            del vs_env[k]
-            print(f"PYTHON in variable: {v}")
     vs_subprocess: subprocess.Popen | None = None
     try:
         vs_subprocess = subprocess.Popen(
@@ -157,11 +247,16 @@ def main():
     except Exception as e:
         print(f"[E] Unexpected error: {type(e)}", flush=True)
 
+    if debug or arguments.log:
+        print(lightcyan("Encoder command:"))
+        print(lightgreen(' '.join(encoder_command)))
+    logger.debug(f"Encoder command: {' '.join(encoder_command)}")
+
     # Characteristics of the pipe
     frame_count: int = in_video_info['frame_count']
     h, w = in_video_info['shape'][:2]
     in_nbytes: int = h * w * vs_video_info['bpp'] // 8
-    if arguments.debug:
+    if debug:
         print(lightcyan("Pipe in:"))
         print(f"  shape: {w}x{h}")
         print(f"  nb of bytes: {in_nbytes}")
@@ -170,6 +265,7 @@ def main():
     frame: bytes = None
     line: str = ''
     os.set_blocking(encoder_subprocess.stdout.fileno(), False)
+    print(f"Processing:")
     for _ in range(frame_count):
         # print(f"reading frame no. {i}", end="\r")
         frame: bytes = vs_subprocess.stdout.read(in_nbytes)
@@ -206,6 +302,8 @@ def main():
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
+    if sys.platform not in ('win32', 'linux'):
+        sys.exit(f"{sys.platform} is not supported")
     main()
 
 

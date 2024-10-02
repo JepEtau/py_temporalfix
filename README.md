@@ -11,19 +11,23 @@ _This project is highly experimental: only critical bugs may be corrected and ne
 - [Installation](#Installation)
 - [Usage](#Usage)
 - [Manual installation](#Manual-installation)
+- [Troubleshooting](#Troubleshooting)
 
 &nbsp;
 
 
 ## Basic usage
-`python py_temporalfix.py --input input_video.mkv --output output_video.mkv --radius 6 --strength 300`
+`python py_temporalfix.py --input input_video.mkv --output output_video.mkv --t_radius 6 --strength 300`
 
 &nbsp;
+
+_Note: when the output container is Matroska (.mkv), the strength and temporal radius values are added to the output video metadata._
 
 ## Requirements
 - Windows 11
 - Python 3.12
 
+&nbsp;
 
 ## Installation
 
@@ -52,6 +56,7 @@ This will install the required python packages. FFmpeg and a vs (portable) envir
 
 - (Optional) **Update vs_temporal_fix script**: download the script from the [author's github repo](https://github.com/pifroggi/vs_temporalfix) to the root of this project.
 
+&nbsp;
 
 ## Usage
 
@@ -64,12 +69,13 @@ This will install the required python packages. FFmpeg and a vs (portable) envir
 | `--output`| Path to the output video file |
 | `--suffix`| Suffix used when no output filename is specified (default:  `_fixed`)|
 
+
 ### Parameters passed to the script.
 For more details: [vs_temporalfix](https://github.com/pifroggi/vs_temporalfix)
 
 | Option&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |  Default | Description |
 | :--- | :---: | :--- |
-| `--radius` | `6` | The temporal radius sets the number of frames to average over. Higher means more stable. If you get blending/ghosting on small movements or blocky artifacts, reduce this. |
+| `--t_radius` | `6` | The temporal radius sets the number of frames to average over. Higher means more stable. If you get blending/ghosting on small movements or blocky artifacts, reduce this. |
 | `--strength` | `300` | Suppression strength of temporal inconsistencies. Higher means more aggressive. |
 
 
@@ -80,10 +86,10 @@ Parameters passed to the encoder. Refer to the [FFmpeg documentation](https://ff
 | :--- | :---: | :--- |
 | `--encoder`   | `h264`    |  `h264`, `h265`, `ffv1`, `vp9`|
 | `--pix_fmt`   | `yuv420p` |  rgb or yuv formats  |
-| `--preset`    |           | `ultrafast`, `superfast`, `veryfast`, `faster`, `fast`, `medium`, `slow`, `slower`, `veryslow`   |
+| `--preset`    |  -         | `ultrafast`, `superfast`, `veryfast`, `faster`, `fast`, `medium`, `slow`, `slower`, `veryslow`   |
 | `--crf`       |    `23`|  0 to 51  |
 | `--tune`      |  `film`, `animation`, `grain`, `stillimage`, `fastdecode`, `zerolatency`  |
-| `--ffmpeg_args` | | Used to pass customized arguments to the encoder (FFmpeg). Override the previous options 
+| `--ffmpeg_args` | `""` | Used to pass customized arguments to the encoder (FFmpeg). Override the previous options. This option must be double quoted. Example: `--ffmpeg_args "-preset veryfast"`|
 
 
 ### Not yet supported:
@@ -93,6 +99,7 @@ Parameters passed to the encoder. Refer to the [FFmpeg documentation](https://ff
 | `-t`      | hh:mm:ss.ms   | duration              |
 | `-to`     | hh:mm:ss.ms   | position              |
 
+&nbsp;
 
 ## Manual installation
 
@@ -108,3 +115,12 @@ Parameters passed to the encoder. Refer to the [FFmpeg documentation](https://ff
 
 Note: in case of any problem with vspython, create a portable python env and populate this env with vspipe.
      
+&nbsp;
+
+## Troubleshooting
+
+Append `--log` to the command line. The script:  
+- parses the script and display some info
+- displays the encoder command line
+- creates a log file in the `log` directory
+Please attach this log when reporting an issue

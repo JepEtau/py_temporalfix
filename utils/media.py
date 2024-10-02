@@ -1,9 +1,10 @@
-from typing import Any, Literal, TypedDict
 from enum import Enum
 import json
-import subprocess
-
+import sys
 import numpy as np
+from pprint import pprint
+import subprocess
+from typing import Any, Literal, TypedDict
 
 from .time_conversions import FrameRate
 from .pxl_fmt import PIXEL_FORMAT
@@ -161,11 +162,16 @@ def extract_media_info(media_filepath: str) -> MediaInfo:
         'metadata': v_stream.get('tags', None),
     }
 
-    for tag_name in ['DURATION', 'ENCODER']:
-        try:
-            del video_info['metadata'][tag_name]
-        except:
-            pass
+    if isinstance(video_info['metadata'], dict):
+        tags_to_remove: tuple[str] = (
+            'duration', 'encoder', 'creation_time', 'handler_name', 'vendor_id'
+        )
+        for tag_name in list(video_info['metadata'].keys()).copy():
+            if tag_name.lower() in tags_to_remove:
+                try:
+                    del video_info['metadata'][tag_name]
+                except:
+                    pass
 
     # Is interlaced?
     if (fo := v_stream.get('field_order', None)):

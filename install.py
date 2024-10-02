@@ -33,7 +33,7 @@ def _install_minimum_py_packages() -> None:
         pip_command: str = (
             f"{python_exe} -m pip install {package}"
         )
-        print(f"Installing {package}:")
+        print(f"\033[96mInstalling {package}:\033[00m")
         install_subprocess: subprocess.Popen
         timeout: float = 20
         retry: int = 5

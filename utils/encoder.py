@@ -1,9 +1,12 @@
 from dataclasses import dataclass
 from enum import Enum
 import math
+from pprint import pprint
 import re
 import numpy as np
 import sys
+
+from utils.path_utils import get_extension
 
 from .p_print import red
 from .media import (
@@ -218,13 +221,15 @@ def generate_ffmpeg_encoder_cmd(
 
     # Aspect ratio
     sar_dar: list[str] = []
-    sar : str = '/'.join(map(str, in_vi['sar']))
-    if sar != "1/1":
-        sar_dar.append(sar)
+    if 'sar' in in_vi:
+        sar : str = '/'.join(map(str, in_vi['sar']))
+        if sar != "1/1":
+            sar_dar.append(f"setsar={sar}")
 
-    dar : str = '/'.join(map(str, in_vi['dar']))
-    if dar != "1/1":
-        sar_dar.append(dar)
+    if 'dar' in in_vi:
+        dar : str = '/'.join(map(str, in_vi['dar']))
+        if dar != "1/1":
+            sar_dar.append(f"setdar={dar}")
 
     if sar_dar:
         ffmpeg_command.extend(["-vf", ','.join(sar_dar)])
@@ -242,7 +247,7 @@ def generate_ffmpeg_encoder_cmd(
         'color_matrix': 'colormatrix',
     }
     for k, v in color_to_option.items():
-        if in_vi[k] is not None:
+        if in_vi[k] is not None and v not in params.ffmpeg_args:
             ffmpeg_command.extend([f"-{v}={in_vi[k]}"])
 
     # Encoder
@@ -261,7 +266,6 @@ def generate_ffmpeg_encoder_cmd(
     if "-crf" not in params.ffmpeg_args and params.crf != -1:
         ffmpeg_command.extend(["-crf", f"{params.crf}"])
 
-
     # Audio/subtitles
     if params.copy_audio and True:
         if in_media_info['audio']['nstreams'] > 0:
@@ -278,17 +282,17 @@ def generate_ffmpeg_encoder_cmd(
         ffmpeg_command.extend(params.ffmpeg_args.split(" "))
 
     # Add metadata
-    ffmpeg_command.extend(["-movflags", "use_metadata_tags"])
-    metadata: dict[str, str]
-    for metadata in (video_info['metadata'], in_vi['metadata']):
-        if len(metadata.keys()):
-            for k, meta in metadata.items():
-                ffmpeg_command.extend(["-metadata:s:v:0", f"{k}={meta}"])
+    if get_extension(params.filepath) == ".mkv":
+        ffmpeg_command.extend(["-movflags", "use_metadata_tags"])
+        metadata: dict[str, str]
+        for metadata in (video_info['metadata'], in_vi['metadata']):
+            if len(metadata.keys()):
+                for k, meta in metadata.items():
+                    ffmpeg_command.extend(["-metadata:s:v:0", f"{k}={meta}"])
 
     # Output filepath
     ffmpeg_command.append(params.filepath)
     if params.overwrite:
         ffmpeg_command.append('-y')
 
-    # print(f"ffmpeg_command: {' '.join(ffmpeg_command)}")
     return ffmpeg_command
