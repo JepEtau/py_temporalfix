@@ -6,15 +6,22 @@ from argparse import (
 )
 
 
-def bounded_decimal_type(min: int | float, max: int | float):
-    def bounded_decimal_test(value: int | float) -> int | float:
-        if min <= value <= max:
-            return value
+class BoundedInteger:
+    def __init__(self, min_value: int, max_value: int) -> None:
+        self.min_value: int = min_value
+        self.max_value: int = max_value
 
+    def __call__(self, value) -> int:
+        try:
+            value = int(value)
+        except:
+            raise ArgumentTypeError(f"Value is not a valid argument.")
+        if self.min_value <= value <= self.max_value:
+            return value
         raise ArgumentTypeError(
-            f"Value is not a valid argument. must be in [{min}, {max}] range"
+            f"Value is not a valid argument, allowed range: {self.min_value}..{self.max_value}"
         )
-    return bounded_decimal_test
+
 
 
 def arg_parse() -> Namespace:
@@ -56,7 +63,8 @@ def arg_parse() -> Namespace:
     parser.add_argument(
         "-r",
         "--radius",
-        type=bounded_decimal_type(1, 6),
+        type=BoundedInteger(1, 6),
+        metavar="[1..6]",
         default=6,
         required=False,
         help="""Temporal radius sets the number of frames to average over. Higher means more stable.
@@ -67,7 +75,8 @@ If you get blending/ghosting on small movements or blocky artifacts, reduce this
     parser.add_argument(
         "-s",
         "--strength",
-        type=bounded_decimal_type(1, 400),
+        type=BoundedInteger(1, 400),
+        metavar="[1..400]",
         default=300,
         required=False,
         help="""Suppression strength of temporal inconsistencies.
@@ -195,6 +204,16 @@ recommended: yuv420p, yuv420p10le, yuv420p12le
         action="store_true",
         required=False,
         help="""FFmpeg benchmark
+\n"""
+    )
+
+    # Logger
+    parser.add_argument(
+        "--log",
+        action="store_true",
+        required=False,
+        default=False,
+        help="""(DEV) log in ./logs
 \n"""
     )
 

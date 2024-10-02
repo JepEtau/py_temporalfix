@@ -163,3 +163,4 @@ cython_debug/
 
 vspython/
 external/
+log/

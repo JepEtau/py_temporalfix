@@ -1,5 +1,7 @@
 import os
 import sys
+if sys.platform != "win":
+    print(f"{sys.platform} is not supported", file=sys.stderr)
 from typing import Literal
 for subd in ("Scripts", "vs-scripts", "vs-plugins", ""):
     sys.path.insert(0, os.path.abspath(os.path.join("external", "vspython", subd)))

@@ -1,9 +1,10 @@
-from typing import Any, Literal, TypedDict
 from enum import Enum
 import json
-import subprocess
-
+import sys
 import numpy as np
+from pprint import pprint
+import subprocess
+from typing import Any, Literal, TypedDict
 
 from .time_conversions import FrameRate
 from .pxl_fmt import PIXEL_FORMAT
