@@ -61,8 +61,8 @@ def arg_parse() -> Namespace:
     )
 
     parser.add_argument(
-        "-r",
-        "--radius",
+        "-tr",
+        "--t_radius",
         type=BoundedInteger(1, 6),
         metavar="[1..6]",
         default=6,

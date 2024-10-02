@@ -30,6 +30,7 @@ def extract_info_from_vs_script(
         stdout: str = stdout_bytes.decode('utf-8)')
 
         logger.debug("Script info:")
+        print(lightcyan("Script info:"))
         for l in stdout.split('\n'):
             try:
                 k, v = l.split(':')

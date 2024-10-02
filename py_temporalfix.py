@@ -119,7 +119,7 @@ def main():
         'c_order': vs_c_order,
         'pix_fmt': vs_out_pix_fmt,
         'metadata': {
-            'vs_temporal_fix': f"tr={arguments.radius}, strength={arguments.strength}"
+            'vs_temporal_fix': f"tr={arguments.t_radius}, strength={arguments.strength}"
         }
     })
 
@@ -139,7 +139,7 @@ def main():
         vspipe_exe,
         "vstf.vpy",
         "--arg", f"input_fp=\"{arguments.input}\"",
-        "--arg", f"tr={arguments.radius}",
+        "--arg", f"tr={arguments.t_radius}",
         "--arg", f"strength={arguments.strength}",
         "--arg", f"pix_fmt={vs_out_pix_fmt}",
         "-",
@@ -157,11 +157,6 @@ def main():
         params=e_params,
         in_media_info=in_media_info,
     )
-    if debug:
-        print(lightcyan("Encoder command:"))
-        print(lightgreen(' '.join(encoder_command)))
-    logger.debug(f"Encoder command: {' '.join(encoder_command)}")
-
 
     # Encoder process
     encoder_subprocess: subprocess.Popen | None = None
@@ -176,8 +171,6 @@ def main():
         sys.exit(red(f"[E] Unexpected error: {type(e)}"))
     if encoder_subprocess is None:
         sys.exit(red(f"[E] Encoder process is not started"))
-
-
 
     # Clean environment for vspython
     # vs_path: list[str] = []
@@ -253,6 +246,11 @@ def main():
         )
     except Exception as e:
         print(f"[E] Unexpected error: {type(e)}", flush=True)
+
+    if debug or arguments.log:
+        print(lightcyan("Encoder command:"))
+        print(lightgreen(' '.join(encoder_command)))
+    logger.debug(f"Encoder command: {' '.join(encoder_command)}")
 
     # Characteristics of the pipe
     frame_count: int = in_video_info['frame_count']
