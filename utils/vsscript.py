@@ -49,8 +49,8 @@ def extract_info_from_vs_script(
 
     if stdout_bytes is not None:
         stdout: str = stdout_bytes.decode('utf-8)')
+        logger.debug(stdout)
         if 'failed' in stdout or 'not supported' in stdout:
-            logger.debug(stdout)
             sys.exit(f"Error while evaluating script:\n{stdout}")
             return False, info
 

@@ -218,13 +218,15 @@ def generate_ffmpeg_encoder_cmd(
 
     # Aspect ratio
     sar_dar: list[str] = []
-    sar : str = '/'.join(map(str, in_vi['sar']))
-    if sar != "1/1":
-        sar_dar.append(sar)
+    if 'sar' in in_media_info:
+        sar : str = '/'.join(map(str, in_media_info['sar']))
+        if sar != "1/1":
+            sar_dar.append(sar)
 
-    dar : str = '/'.join(map(str, in_vi['dar']))
-    if dar != "1/1":
-        sar_dar.append(dar)
+    if 'dar' in in_media_info:
+        dar : str = '/'.join(map(str, in_media_info['dar']))
+        if dar != "1/1":
+            sar_dar.append(dar)
 
     if sar_dar:
         ffmpeg_command.extend(["-vf", ','.join(sar_dar)])
@@ -283,7 +285,7 @@ def generate_ffmpeg_encoder_cmd(
     for metadata in (video_info['metadata'], in_vi['metadata']):
         if len(metadata.keys()):
             for k, meta in metadata.items():
-                ffmpeg_command.extend(["-metadata:s:v:0", f"{k}={meta}"])
+                ffmpeg_command.extend(["-metadata:s:v:0", f"{k}=\"{meta}\""])
 
     # Output filepath
     ffmpeg_command.append(params.filepath)
