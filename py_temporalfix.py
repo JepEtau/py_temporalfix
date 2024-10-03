@@ -35,14 +35,15 @@ from utils.vsscript import extract_info_from_vs_script
 
 def main():
     # Verify the installation
-    vspipe_exe: str = os.path.join(".", "external", "vspython", "VSpipe.exe")
+    root_dir: str = os.path.dirname(os.path.abspath(__file__))
+    vspipe_exe: str = absolute_path(
+        os.path.join(root_dir, "external", "vspython", "VSPipe.exe")
+    )
     if sys.platform == "linux":
         vspipe_exe = "/usr/bin/vspipe"
 
     missing_tools: list[str] = check_missing_tools(
-        tools={
-            'VSpipe': vspipe_exe
-        }
+        tools={"VSPipe": vspipe_exe}
     )
     if missing_tools:
         sys.exit(red(f"""
@@ -202,7 +203,6 @@ Please install these dependencies (refer to the documentation).
 
     # Create path used by vs subprocess
     vs_path: list[str] = []
-    root_dir: str = os.path.dirname(os.path.abspath(__file__))
     sep: str = ";"
     if sys.platform == "win32":
         for dir in ("Scripts", "vs-scripts", "vs-plugins", ""):
