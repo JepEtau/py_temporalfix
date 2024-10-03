@@ -29,10 +29,27 @@ from utils.path_utils import (
 )
 from utils.pxl_fmt import PIXEL_FORMAT
 from utils.p_print import *
+from utils.tools import check_missing_tools
 from utils.vsscript import extract_info_from_vs_script
 
 
 def main():
+    # Verify the installation
+    vspipe_exe: str = os.path.join(".", "external", "vspython", "VSpipe.exe")
+    if sys.platform == "linux":
+        vspipe_exe = "/usr/bin/vspipe"
+
+    missing_tools: list[str] = check_missing_tools(
+        tools={
+            'VSpipe': vspipe_exe
+        }
+    )
+    if missing_tools:
+        sys.exit(red(f"""
+Error: missing tools: {', '.join(missing_tools)}.
+Please install these dependencies (refer to the documentation).
+        """))
+
     # Parse arguments
     arguments: Namespace = arg_parse()
     if arguments.log:
@@ -58,7 +75,7 @@ def main():
     # Check arguments validity
     in_media_path: str = absolute_path(arguments.input)
     if not os.path.isfile(in_media_path):
-        sys.exit(red(f"Error: invalid input file: {in_media_path}"))
+        sys.exit(red(f"Error: missing input file {in_media_path}"))
 
     out_media_path: str = absolute_path(arguments.output)
     if not arguments.output:
@@ -84,6 +101,7 @@ def main():
     try:
         in_media_info = extract_media_info(in_media_path)
     except:
+        in_media_info = extract_media_info(in_media_path)
         sys.exit(f"[E] {in_media_path} is not a valid input media file")
     if debug:
         print(lightcyan("FFmpeg media info:"))
@@ -129,12 +147,6 @@ def main():
     logger.debug(f"VS video info:\n{pformat(vs_video_info)}")
 
     # VSpipe command
-    vspipe_exe: str = os.path.join(".", "external", "vspython", "VSpipe.exe")
-    if sys.platform == "linux":
-        vspipe_exe = "/usr/bin/vspipe"
-    if not os.path.isfile(vspipe_exe):
-        sys.exit("Error: VSpipe is not installed.")
-
     vs_command: list[str] = [
         vspipe_exe,
         "vstf.vpy",
@@ -266,16 +278,19 @@ def main():
     line: str = ''
     os.set_blocking(encoder_subprocess.stdout.fileno(), False)
     print(f"Processing:")
-    for _ in range(frame_count):
-        # print(f"reading frame no. {i}", end="\r")
-        frame: bytes = vs_subprocess.stdout.read(in_nbytes)
-        if frame is None:
-            print(red("None"))
-        encoder_subprocess.stdin.write(frame)
-        line = encoder_subprocess.stdout.readline().decode('utf-8')
-        if line:
-            print(line.strip(), end='\r')
-    print()
+    try:
+        for _ in range(frame_count):
+            # print(f"reading frame no. {i}", end="\r")
+            frame: bytes = vs_subprocess.stdout.read(in_nbytes)
+            if frame is None:
+                print(red("None"))
+            encoder_subprocess.stdin.write(frame)
+            line = encoder_subprocess.stdout.readline().decode('utf-8')
+            if line:
+                print(line.strip(), end='\r')
+        print()
+    except:
+        pass
 
     stdout_b: bytes | None = None
     stderr_b: bytes | None = None
@@ -290,11 +305,13 @@ def main():
         stdout = stdout_b.decode('utf-8)')
         if stdout:
             print(stdout)
+            logger.debug(f"FFmpeg stdout:\n{stdout}")
 
     if stderr_b is not None:
         stderr = stderr_b.decode('utf-8)')
         if stderr:
             print(stderr)
+            logger.debug(f"FFmpeg stderr:\n{stderr}")
 
     print(lightcyan("Done."))
     return

@@ -40,3 +40,18 @@ elif sys.platform == "linux":
 
 else:
     sys.exit("[E] Platform/system not supported.")
+
+
+
+def check_missing_tools(tools: dict[str, str]) -> list[str]:
+    """Returns the missing tools. ffmpeg and ffprobe are automatically checked."""
+    tools.update({
+        'FFmpeg': ffmpeg_exe,
+        'FFprobe': ffprobe_exe,
+    })
+    missing_tools: list[str] = []
+    for name, path in tools.items():
+        tool_fp: str = os.path.join(external_dir, path)
+        if not os.path.isfile(tool_fp):
+            missing_tools.append(name)
+    return missing_tools

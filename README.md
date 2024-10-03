@@ -48,7 +48,7 @@ Or download/extract the zip file.
 - **Dependencies and external tools**  
 This will install the required python packages. FFmpeg and a vs (portable) environnment will also be downloaded to the `external` directory.
     ```sh
-    python install.py
+    python install_deps.py
     ```
 
 > [!WARNING]
