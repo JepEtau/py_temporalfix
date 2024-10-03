@@ -238,18 +238,6 @@ def generate_ffmpeg_encoder_cmd(
         "-map", "0:v"
     ])
 
-    # Color
-    color_to_option: dict[str, str] = {
-        'color_space': 'colorspace',
-        'color_transfer': 'color_trc',
-        'color_primaries': 'color_primaries',
-        'color_range': 'range',
-        'color_matrix': 'colormatrix',
-    }
-    for k, v in color_to_option.items():
-        if in_vi[k] is not None and v not in params.ffmpeg_args:
-            ffmpeg_command.extend([f"-{v}={in_vi[k]}"])
-
     # Encoder
     if "-vcodec" not in params.ffmpeg_args:
         ffmpeg_command.extend(["-vcodec", f"{params.encoder.value}"])
