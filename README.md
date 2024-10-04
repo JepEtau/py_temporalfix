@@ -2,7 +2,7 @@
 
 The objective is to use a separate portable vs/python interpretor to run the [vs_temporalfix](https://github.com/pifroggi/vs_temporalfix) script developped by [pifroggi](https://github.com/pifroggi)
 
-_This project is highly experimental: only critical bugs may be corrected and new features may be added based on their added value._
+_This project is highly experimental_
 &nbsp;
 
 ## Table of Contents
