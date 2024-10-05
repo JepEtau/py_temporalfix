@@ -2,7 +2,7 @@
 
 The objective is to use a separate portable vs/python interpretor to run the [vs_temporalfix](https://github.com/pifroggi/vs_temporalfix) script developped by [pifroggi](https://github.com/pifroggi)
 
-_This project is highly experimental_
+_This project is experimental_
 &nbsp;
 
 ## Table of Contents
@@ -22,6 +22,7 @@ _This project is highly experimental_
 &nbsp;
 
 _Note: when the output container is Matroska (.mkv), the strength and temporal radius values are added to the output video metadata._
+_Note2: it's possible to not specify the output filepath: a suffix will be automatically added to the filename_
 
 ## Requirements
 - Windows 11
@@ -67,7 +68,7 @@ This will install the required python packages. FFmpeg and a vs (portable) envir
 | :--- | :--- |
 | `--input` | Path to the input video file  |
 | `--output`| Path to the output video file |
-| `--suffix`| Suffix used when no output filename is specified (default:  `_fixed`)|
+| `--suffix`| Suffix used when no output filename is specified (default:  `_fixed_<t_radius>_<strength>`)|
 
 
 ### Parameters passed to the script.

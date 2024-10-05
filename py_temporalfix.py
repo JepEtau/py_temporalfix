@@ -82,7 +82,7 @@ Please install these dependencies (refer to the documentation).
     if not arguments.output:
         dirname, basename, extension = path_split(in_media_path)
         out_media_path: str = os.path.join(
-            dirname, f"{basename}{arguments.suffix}{extension}"
+            dirname, f"{basename}{arguments.suffix}_{arguments.t_radius}_{arguments.strength}{extension}"
         )
     if out_media_path == in_media_path:
         sys.exit(red(f"Error: output file must be different from input file: {out_media_path}"))
