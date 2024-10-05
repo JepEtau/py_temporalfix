@@ -63,8 +63,8 @@ def arg_parse() -> Namespace:
     parser.add_argument(
         "-tr",
         "--t_radius",
-        type=BoundedInteger(1, 6),
-        metavar="[1..6]",
+        type=BoundedInteger(1, 10),
+        metavar="[1..10]",
         default=6,
         required=False,
         help="""Temporal radius sets the number of frames to average over. Higher means more stable.
