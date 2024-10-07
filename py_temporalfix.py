@@ -101,7 +101,6 @@ Please install these dependencies (refer to the documentation).
     try:
         in_media_info = extract_media_info(in_media_path)
     except:
-        in_media_info = extract_media_info(in_media_path)
         sys.exit(f"[E] {in_media_path} is not a valid input media file")
     if debug:
         print(lightcyan("FFmpeg media info:"))
@@ -121,10 +120,9 @@ Please install these dependencies (refer to the documentation).
     sar_str: str = f", SAR {':'.join(map(str, _sar))}" if _sar[0] / _sar[1] != 1 else ""
     _dar: tuple[int] = in_video_info['dar']
     dar_str: str = f", DAR {':'.join(map(str, _dar))}" if _dar[0] / _dar[1] != 1 else ""
-
-    vi_str: str = "".join((dim_str, frame_rate_str, pix_fmt_str, sar_str, dar_str))
-    print(vi_str)
-    logger.debug(f"input video format: {vi_str}")
+    in_vi_str: str = "".join((dim_str, frame_rate_str, pix_fmt_str, sar_str, dar_str))
+    print(in_vi_str)
+    logger.debug(f"input video format: {in_vi_str}")
 
     vs_video_info: VideoInfo = deepcopy(in_video_info)
     vs_video_info['filepath'] = out_media_path
@@ -208,13 +206,6 @@ Please install these dependencies (refer to the documentation).
         'vapoursynth',
         'ffmpeg',
     )
-    # for p in sys.path:
-    #     if not p:
-    #         continue
-    #     p_lower = p.lower()
-    #     for n in forbidden_names:
-    #         if n in p_lower:
-    #             vs_path.append(p)
 
     # Create path used by vs subprocess
     vs_path: list[str] = []
@@ -311,10 +302,10 @@ Please install these dependencies (refer to the documentation).
     stderr_b: bytes | None = None
     try:
         # Arbitrary timeout value
-       stdout_b, stderr_b = encoder_subprocess.communicate(timeout=10)
+        stdout_b, stderr_b = encoder_subprocess.communicate(timeout=10)
     except:
         encoder_subprocess.kill()
-        return False
+        return
 
     if stdout_b is not None:
         stdout = stdout_b.decode('utf-8)')
@@ -328,14 +319,42 @@ Please install these dependencies (refer to the documentation).
             print(stderr)
             logger.debug(f"FFmpeg stderr:\n{stderr}")
 
+    # For testing purpose
+    success: bool = True
+    out_vi: VideoInfo = None
+    try:
+        out_vi: VideoInfo = extract_media_info(out_media_path)['video']
+    except:
+        success = False
+
+    if out_vi is None or out_vi['frame_count'] != in_video_info['frame_count']:
+        logger.debug(f"Number of frames differs")
+        success = False
+
+    if arguments.log:
+        h, w = out_vi['shape'][:2]
+        dim_str: str = f"    {w}x{h}"
+        frame_rate_str: str = f", {frame_rate_to_str(out_vi['frame_rate_r'])} fps"
+        pix_fmt_str: str = f", {out_vi['pix_fmt']}"
+        _sar: tuple[int] = out_vi['sar']
+        sar_str: str = f", SAR {':'.join(map(str, _sar))}" if _sar[0] / _sar[1] != 1 else ""
+        _dar: tuple[int] = out_vi['dar']
+        dar_str: str = f", DAR {':'.join(map(str, _dar))}" if _dar[0] / _dar[1] != 1 else ""
+        out_vi_str: str = "".join((dim_str, frame_rate_str, pix_fmt_str, sar_str, dar_str))
+        logger.debug(f"output video format: {out_vi_str}")
+
+    if not os.path.isfile(out_media_path) or not success:
+        print(red(f"Error: failed to generate {out_media_path}"))
+        return
+
     print(lightcyan("Done."))
-    return
+
 
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    if sys.platform not in ('win32', 'linux'):
-        sys.exit(f"{sys.platform} is not supported")
+    if sys.platform != 'win32':
+        sys.exit(f"Error: {sys.platform} is not a supported platform")
     main()
 
 
