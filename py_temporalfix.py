@@ -29,6 +29,7 @@ from utils.path_utils import (
 )
 from utils.pxl_fmt import PIXEL_FORMAT
 from utils.p_print import *
+from utils.time_conversions import frame_rate_to_str
 from utils.tools import check_missing_tools
 from utils.vsscript import extract_info_from_vs_script
 
@@ -92,9 +93,7 @@ Please install these dependencies (refer to the documentation).
         sys.exit(red(f"Error: no write access to {out_dir}"))
 
     print(lightcyan(f"Input video file:"), f"{in_media_path}")
-    print(lightcyan(f"Output video file:"), f"{out_media_path}")
     logger.debug(f"input: {in_media_path}")
-    logger.debug(f"output: {out_media_path}")
 
     # Open media file
     in_media_path: str = absolute_path(arguments.input)
@@ -114,8 +113,24 @@ Please install these dependencies (refer to the documentation).
     in_video_info: VideoInfo = in_media_info['video']
     in_video_info['filepath'] = in_media_path
 
+    h, w = in_video_info['shape'][:2]
+    dim_str: str = f"    {w}x{h}"
+    frame_rate_str: str = f", {frame_rate_to_str(in_video_info['frame_rate_r'])} fps"
+    pix_fmt_str: str = f", {in_video_info['pix_fmt']}"
+    _sar: tuple[int] = in_video_info['sar']
+    sar_str: str = f", SAR {':'.join(map(str, _sar))}" if _sar[0] / _sar[1] != 1 else ""
+    _dar: tuple[int] = in_video_info['dar']
+    dar_str: str = f", DAR {':'.join(map(str, _dar))}" if _dar[0] / _dar[1] != 1 else ""
+
+    vi_str: str = "".join((dim_str, frame_rate_str, pix_fmt_str, sar_str, dar_str))
+    print(vi_str)
+    logger.debug(f"input video format: {vi_str}")
+
     vs_video_info: VideoInfo = deepcopy(in_video_info)
     vs_video_info['filepath'] = out_media_path
+
+    print(lightcyan(f"Output video file:"), f"{out_media_path}")
+    logger.debug(f"output: {out_media_path}")
 
     # Parse arguments and create a dict of params
     e_params: VideoEncoderParams = arguments_to_encoder_params(
