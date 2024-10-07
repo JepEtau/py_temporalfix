@@ -29,6 +29,7 @@ from utils.path_utils import (
 )
 from utils.pxl_fmt import PIXEL_FORMAT
 from utils.p_print import *
+from utils.time_conversions import frame_rate_to_str
 from utils.tools import check_missing_tools
 from utils.vsscript import extract_info_from_vs_script
 
@@ -92,9 +93,7 @@ Please install these dependencies (refer to the documentation).
         sys.exit(red(f"Error: no write access to {out_dir}"))
 
     print(lightcyan(f"Input video file:"), f"{in_media_path}")
-    print(lightcyan(f"Output video file:"), f"{out_media_path}")
     logger.debug(f"input: {in_media_path}")
-    logger.debug(f"output: {out_media_path}")
 
     # Open media file
     in_media_path: str = absolute_path(arguments.input)
@@ -102,7 +101,6 @@ Please install these dependencies (refer to the documentation).
     try:
         in_media_info = extract_media_info(in_media_path)
     except:
-        in_media_info = extract_media_info(in_media_path)
         sys.exit(f"[E] {in_media_path} is not a valid input media file")
     if debug:
         print(lightcyan("FFmpeg media info:"))
@@ -114,8 +112,24 @@ Please install these dependencies (refer to the documentation).
     in_video_info: VideoInfo = in_media_info['video']
     in_video_info['filepath'] = in_media_path
 
+    frame_count_str: str = f"    {in_video_info['frame_count']} frames"
+    h, w = in_video_info['shape'][:2]
+    dim_str: str = f", {w}x{h}"
+    frame_rate_str: str = f", {frame_rate_to_str(in_video_info['frame_rate_r'])} fps"
+    pix_fmt_str: str = f", {in_video_info['pix_fmt']}"
+    _sar: tuple[int] = in_video_info['sar']
+    sar_str: str = f", SAR {':'.join(map(str, _sar))}" if _sar[0] / _sar[1] != 1 else ""
+    _dar: tuple[int] = in_video_info['dar']
+    dar_str: str = f", DAR {':'.join(map(str, _dar))}" if _dar[0] / _dar[1] != 1 else ""
+    in_vi_str: str = "".join((frame_count_str, dim_str, frame_rate_str, pix_fmt_str, sar_str, dar_str))
+    print(in_vi_str)
+    logger.debug(f"input video format: {in_vi_str}")
+
     vs_video_info: VideoInfo = deepcopy(in_video_info)
     vs_video_info['filepath'] = out_media_path
+
+    print(lightcyan(f"Output video file:"), f"{out_media_path}")
+    logger.debug(f"output: {out_media_path}")
 
     # Parse arguments and create a dict of params
     e_params: VideoEncoderParams = arguments_to_encoder_params(
@@ -193,13 +207,6 @@ Please install these dependencies (refer to the documentation).
         'vapoursynth',
         'ffmpeg',
     )
-    # for p in sys.path:
-    #     if not p:
-    #         continue
-    #     p_lower = p.lower()
-    #     for n in forbidden_names:
-    #         if n in p_lower:
-    #             vs_path.append(p)
 
     # Create path used by vs subprocess
     vs_path: list[str] = []
@@ -296,31 +303,60 @@ Please install these dependencies (refer to the documentation).
     stderr_b: bytes | None = None
     try:
         # Arbitrary timeout value
-       stdout_b, stderr_b = encoder_subprocess.communicate(timeout=10)
+        stdout_b, stderr_b = encoder_subprocess.communicate(timeout=10)
     except:
         encoder_subprocess.kill()
-        return False
+        return
 
     if stdout_b is not None:
         stdout = stdout_b.decode('utf-8)')
         if stdout:
-            print(stdout)
             logger.debug(f"FFmpeg stdout:\n{stdout}")
 
     if stderr_b is not None:
         stderr = stderr_b.decode('utf-8)')
         if stderr:
-            print(stderr)
             logger.debug(f"FFmpeg stderr:\n{stderr}")
 
+    # For evaluation purpose
+    # Enable this after validation
+    success: bool = True
+    if arguments.debug:
+        out_vi: VideoInfo = None
+        try:
+            out_vi: VideoInfo = extract_media_info(out_media_path)['video']
+        except:
+            success = False
+
+        if out_vi is None or out_vi['frame_count'] != in_video_info['frame_count']:
+            logger.debug(f"Number of frames differs")
+            success = False
+
+        if success and arguments.log:
+            frame_count_str: str = f"    {out_vi['frame_count']} frames"
+            h, w = out_vi['shape'][:2]
+            dim_str: str = f", {w}x{h}"
+            frame_rate_str: str = f", {frame_rate_to_str(out_vi['frame_rate_r'])} fps"
+            pix_fmt_str: str = f", {out_vi['pix_fmt']}"
+            _sar: tuple[int] = out_vi['sar']
+            sar_str: str = f", SAR {':'.join(map(str, _sar))}" if _sar[0] / _sar[1] != 1 else ""
+            _dar: tuple[int] = out_vi['dar']
+            dar_str: str = f", DAR {':'.join(map(str, _dar))}" if _dar[0] / _dar[1] != 1 else ""
+            out_vi_str: str = "".join((frame_count_str, dim_str, frame_rate_str, pix_fmt_str, sar_str, dar_str))
+            logger.debug(f"output video format: {out_vi_str}")
+
+    if not os.path.isfile(out_media_path) or not success:
+        print(red(f"Error: failed to generate {out_media_path}"))
+        return
+
     print(lightcyan("Done."))
-    return
+
 
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    if sys.platform not in ('win32', 'linux'):
-        sys.exit(f"{sys.platform} is not supported")
+    if sys.platform != 'win32':
+        sys.exit(f"Error: {sys.platform} is not a supported platform")
     main()
 
 

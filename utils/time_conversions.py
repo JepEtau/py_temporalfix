@@ -8,6 +8,19 @@ from typing import TypeAlias
 
 FrameRate: TypeAlias = float | int | tuple[int, int]
 
+def frame_rate_to_str(frame_rate: FrameRate) -> str:
+    if (
+        isinstance(frame_rate, int)
+        or isinstance(frame_rate, float) and int(frame_rate) == frame_rate
+    ):
+        return f"{int(frame_rate)}"
+
+    return (
+        f"{frame_rate[0]/frame_rate[1]:.02f}"
+        if frame_rate[1] > 1
+        else f"{frame_rate[0]}"
+    )
+
 
 def frame_to_s(no: int, frame_rate: FrameRate) -> int:
     if isinstance(frame_rate, tuple | list):

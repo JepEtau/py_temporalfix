@@ -76,8 +76,8 @@ For more details: [vs_temporalfix](https://github.com/pifroggi/vs_temporalfix)
 
 | Option&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |  Default | Description |
 | :--- | :---: | :--- |
-| `--t_radius` | `6` | The temporal radius sets the number of frames to average over. Higher means more stable. If you get blending/ghosting on small movements or blocky artifacts, reduce this. There is a big drop in performance for tr > 6 |
-| `--strength` | `300` | Suppression strength of temporal inconsistencies. Higher means more aggressive. |
+| `--t_radius` | `6` | The temporal radius sets the number of frames to average over. Higher means more stable. There is a big drop in performance for tr > 6 |
+| `--strength` | `300` | Suppression strength of temporal inconsistencies. Higher means more aggressive. If you get blending/ghosting on small movements or blocky artifacts, reduce this. |
 
 
 ### Video encoding
