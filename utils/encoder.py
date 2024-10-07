@@ -274,7 +274,7 @@ def generate_ffmpeg_encoder_cmd(
         ffmpeg_command.extend(["-movflags", "use_metadata_tags"])
         metadata: dict[str, str]
         for metadata in (video_info['metadata'], in_vi['metadata']):
-            if len(metadata.keys()):
+            if metadata is not None and len(metadata.keys()):
                 for k, meta in metadata.items():
                     ffmpeg_command.extend(["-metadata:s:v:0", f"{k}={meta}"])
 
