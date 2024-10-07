@@ -112,15 +112,16 @@ Please install these dependencies (refer to the documentation).
     in_video_info: VideoInfo = in_media_info['video']
     in_video_info['filepath'] = in_media_path
 
+    frame_count_str: str = f"    {in_video_info['frame_count']} frames"
     h, w = in_video_info['shape'][:2]
-    dim_str: str = f"    {w}x{h}"
+    dim_str: str = f", {w}x{h}"
     frame_rate_str: str = f", {frame_rate_to_str(in_video_info['frame_rate_r'])} fps"
     pix_fmt_str: str = f", {in_video_info['pix_fmt']}"
     _sar: tuple[int] = in_video_info['sar']
     sar_str: str = f", SAR {':'.join(map(str, _sar))}" if _sar[0] / _sar[1] != 1 else ""
     _dar: tuple[int] = in_video_info['dar']
     dar_str: str = f", DAR {':'.join(map(str, _dar))}" if _dar[0] / _dar[1] != 1 else ""
-    in_vi_str: str = "".join((dim_str, frame_rate_str, pix_fmt_str, sar_str, dar_str))
+    in_vi_str: str = "".join((frame_count_str, dim_str, frame_rate_str, pix_fmt_str, sar_str, dar_str))
     print(in_vi_str)
     logger.debug(f"input video format: {in_vi_str}")
 
@@ -310,38 +311,39 @@ Please install these dependencies (refer to the documentation).
     if stdout_b is not None:
         stdout = stdout_b.decode('utf-8)')
         if stdout:
-            print(stdout)
             logger.debug(f"FFmpeg stdout:\n{stdout}")
 
     if stderr_b is not None:
         stderr = stderr_b.decode('utf-8)')
         if stderr:
-            print(stderr)
             logger.debug(f"FFmpeg stderr:\n{stderr}")
 
-    # For testing purpose
+    # For evaluation purpose
+    # Enable this after validation
     success: bool = True
-    out_vi: VideoInfo = None
-    try:
-        out_vi: VideoInfo = extract_media_info(out_media_path)['video']
-    except:
-        success = False
+    if arguments.debug:
+        out_vi: VideoInfo = None
+        try:
+            out_vi: VideoInfo = extract_media_info(out_media_path)['video']
+        except:
+            success = False
 
-    if out_vi is None or out_vi['frame_count'] != in_video_info['frame_count']:
-        logger.debug(f"Number of frames differs")
-        success = False
+        if out_vi is None or out_vi['frame_count'] != in_video_info['frame_count']:
+            logger.debug(f"Number of frames differs")
+            success = False
 
-    if arguments.log:
-        h, w = out_vi['shape'][:2]
-        dim_str: str = f"    {w}x{h}"
-        frame_rate_str: str = f", {frame_rate_to_str(out_vi['frame_rate_r'])} fps"
-        pix_fmt_str: str = f", {out_vi['pix_fmt']}"
-        _sar: tuple[int] = out_vi['sar']
-        sar_str: str = f", SAR {':'.join(map(str, _sar))}" if _sar[0] / _sar[1] != 1 else ""
-        _dar: tuple[int] = out_vi['dar']
-        dar_str: str = f", DAR {':'.join(map(str, _dar))}" if _dar[0] / _dar[1] != 1 else ""
-        out_vi_str: str = "".join((dim_str, frame_rate_str, pix_fmt_str, sar_str, dar_str))
-        logger.debug(f"output video format: {out_vi_str}")
+        if success and arguments.log:
+            frame_count_str: str = f"    {out_vi['frame_count']} frames"
+            h, w = out_vi['shape'][:2]
+            dim_str: str = f", {w}x{h}"
+            frame_rate_str: str = f", {frame_rate_to_str(out_vi['frame_rate_r'])} fps"
+            pix_fmt_str: str = f", {out_vi['pix_fmt']}"
+            _sar: tuple[int] = out_vi['sar']
+            sar_str: str = f", SAR {':'.join(map(str, _sar))}" if _sar[0] / _sar[1] != 1 else ""
+            _dar: tuple[int] = out_vi['dar']
+            dar_str: str = f", DAR {':'.join(map(str, _dar))}" if _dar[0] / _dar[1] != 1 else ""
+            out_vi_str: str = "".join((frame_count_str, dim_str, frame_rate_str, pix_fmt_str, sar_str, dar_str))
+            logger.debug(f"output video format: {out_vi_str}")
 
     if not os.path.isfile(out_media_path) or not success:
         print(red(f"Error: failed to generate {out_media_path}"))

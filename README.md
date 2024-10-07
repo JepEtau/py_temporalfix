@@ -76,8 +76,8 @@ For more details: [vs_temporalfix](https://github.com/pifroggi/vs_temporalfix)
 
 | Option&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |  Default | Description |
 | :--- | :---: | :--- |
-| `--t_radius` | `6` | The temporal radius sets the number of frames to average over. Higher means more stable. If you get blending/ghosting on small movements or blocky artifacts, reduce this. There is a big drop in performance for tr > 6 |
-| `--strength` | `300` | Suppression strength of temporal inconsistencies. Higher means more aggressive. |
+| `--t_radius` | `6` | The temporal radius sets the number of frames to average over. Higher means more stable. There is a big drop in performance for tr > 6 |
+| `--strength` | `300` | Suppression strength of temporal inconsistencies. Higher means more aggressive. If you get blending/ghosting on small movements or blocky artifacts, reduce this. |
 
 
 ### Video encoding
@@ -112,7 +112,7 @@ Parameters passed to the encoder. Refer to the [FFmpeg documentation](https://ff
 
 - Download the following zip files
     + Download and extract content of [FFmpeg](https://github.com/JepEtau/external_rehost/releases/download/external/ffmpeg_win32_x64.zip) to `external/ffmpeg`
-    + Download and extract content of [vspython](https://github.com/JepEtau/external_rehost/releases/download/external/vspython_win32_x64.zip) to `external/vspython`
+    + Download and extract content of [vspython](https://github.com/JepEtau/external_rehost/releases/download/external/vspython.zip) to `external/vspython`
 
 Note: in case of any problem with vspython, create a portable python env and populate this env with vspipe.
      
