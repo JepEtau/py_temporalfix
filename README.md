@@ -112,7 +112,7 @@ Parameters passed to the encoder. Refer to the [FFmpeg documentation](https://ff
 
 - Download the following zip files
     + Download and extract content of [FFmpeg](https://github.com/JepEtau/external_rehost/releases/download/external/ffmpeg_win32_x64.zip) to `external/ffmpeg`
-    + Download and extract content of [vspython](https://github.com/JepEtau/external_rehost/releases/download/external/vspython_win32_x64.zip) to `external/vspython`
+    + Download and extract content of [vspython](https://github.com/JepEtau/external_rehost/releases/download/external/vspython.zip) to `external/vspython`
 
 Note: in case of any problem with vspython, create a portable python env and populate this env with vspipe.
      
