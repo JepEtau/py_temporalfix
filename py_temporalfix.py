@@ -164,7 +164,7 @@ Please install these dependencies (refer to the documentation).
     # VSpipe command
     vs_command: list[str] = [
         vspipe_exe,
-        "vstf.vpy",
+        os.path.join(root_dir, "vstf.vpy"),
         "--arg", f"input_fp=\"{arguments.input}\"",
         "--arg", f"tr={arguments.t_radius}",
         "--arg", f"strength={arguments.strength}",
