@@ -54,10 +54,10 @@ class VideoEncoderParams:
     add_borders: bool = False
     # Encoder
     vcodec: VideoCodec = VideoCodec.H264
-    pix_fmt: str = 'yuv420p'
-    preset: str = 'medium'
-    tune: str = ''
-    crf: int = 15
+    pix_fmt: str | None = 'yuv420p'
+    preset: str | None = 'medium'
+    tune: str | None = None
+    crf: int | None = None
     overwrite: bool = True
     codec_settings: CodecSettings | None = None
     # color_settings: ColorSettings | None = None
@@ -76,36 +76,58 @@ def arguments_to_encoder_params(
 ) -> VideoEncoderParams:
     """Parse the command line to set the encoder parameters
     """
-    # Encoder: encoder, settings
-    encoder: VideoCodec = str_to_video_codec[arguments.encoder]
-    encoder_settings: CodecSettings | None = None
-    if encoder == VideoCodec.FFV1:
-        encoder_settings = FFv1Settings()
+    # Copy from input
+    params: VideoEncoderParams = VideoEncoderParams(
+        filepath='',
+        vcodec=str_to_video_codec[video_info['codec']],
+        keep_sar=True,
+        pix_fmt=video_info['pix_fmt'],
+    )
 
-    # Extract pixfmt from ffmpeg_args
-    pix_fmt: str = arguments.pix_fmt
-    if (re_match := re.search(
-        re.compile(r"-pix_fmt\s([a-y0-9]+)"), arguments.ffmpeg_args)
+    # Encoder: encoder, settings
+    if arguments.encoder:
+        params.vcodec = str_to_video_codec[arguments.encoder]
+
+    if arguments.preset:
+        params.preset = arguments.preset
+    if arguments.tune:
+        params.tune = arguments.tune
+    if arguments.crf:
+        params.crf = arguments.crf
+
+    vcodec: VideoCodec = params.vcodec
+    if vcodec == VideoCodec.FFV1:
+        params.codec_settings = FFv1Settings()
+
+    elif vcodec == VideoCodec.DNXHD:
+        params.codec_settings = DNxHRSettings(
+            profile=video_info['profile']
+        )
+        params.preset = params.tune = params.crf = None
+
+    # Extract pix_fmt from ffmpeg_args
+    if (
+        not arguments.pix_fmt
+        and (re_match := re.search(re.compile(r"-pix_fmt\s([a-y0-9]+)"), arguments.ffmpeg_args))
     ):
-        pix_fmt = re_match.group(1)
-    if pix_fmt not in PIXEL_FORMAT.keys():
-        sys.exit(red(f"Error: pixel format \"{pix_fmt}\" is not supported"))
+        params.pix_fmt = re_match.group(1)
+    elif arguments.pix_fmt:
+        params.pix_fmt = arguments.pix_fmt
+    if params.pix_fmt not in PIXEL_FORMAT.keys():
+        sys.exit(red(f"Error: pixel format \"{params.pix_fmt}\" is not supported"))
 
     # Encoder: colorspace
     # removed for this application
 
-    # Create the encoder settings used by the encoder node
-    params: VideoEncoderParams = VideoEncoderParams(
-        filepath=video_info['filepath'],
-        vcodec=encoder,
-        pix_fmt=pix_fmt,
-        preset=arguments.preset,
-        tune=arguments.tune,
-        crf=arguments.crf,
-        codec_settings=encoder_settings,
-        ffmpeg_args=arguments.ffmpeg_args,
-        benchmark=arguments.benchmark,
-    )
+    # Set the output extension depending on the codec
+    out_fp: str = video_info['filepath']
+    if get_extension(out_fp) == '.$$$':
+        out_fp = out_fp.replace('.$$$', vcodec_to_extension[vcodec])
+    params.filepath = out_fp
+
+    # Modify the encoder settings used by the encoder node
+    params.ffmpeg_args = arguments.ffmpeg_args
+    params.benchmark = arguments.benchmark
 
     # Copy audio stream if no video clipping
     if (
@@ -185,13 +207,18 @@ def generate_ffmpeg_encoder_cmd(
     if "-pix_fmt" not in params.ffmpeg_args:
         ffmpeg_command.extend(["-pix_fmt", f"{params.pix_fmt}"])
 
+    # Settings
     if "-preset" not in params.ffmpeg_args and params.preset:
         ffmpeg_command.extend(["-preset", f"{params.preset}"])
 
     if "-tune" not in params.ffmpeg_args and params.tune:
         ffmpeg_command.extend(["-tune", f"{params.tune}"])
 
-    if "-crf" not in params.ffmpeg_args and params.crf != -1:
+    if (
+        "-crf" not in params.ffmpeg_args
+        and params.crf is not None
+        and params.crf > 0
+    ):
         ffmpeg_command.extend(["-crf", f"{params.crf}"])
 
     if params.codec_settings is not None:

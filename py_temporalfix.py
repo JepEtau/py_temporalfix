@@ -134,10 +134,11 @@ Please install these dependencies (refer to the documentation).
     logger.debug(f"input video format: {in_vi_str}")
 
     vs_video_info: VideoInfo = deepcopy(in_video_info)
-    vs_video_info['filepath'] = out_media_path
-
-    print(lightcyan(f"Output video file:"), f"{out_media_path}")
-    logger.debug(f"output: {out_media_path}")
+    # If not specified, the output filepath will be generated depending on the codec
+    if arguments.output:
+        vs_video_info['filepath'] = out_media_path
+    else:
+        vs_video_info['filepath'] = os.path.join(*path_split(out_media_path)[:2]) + ".$$$"
 
     # Parse arguments and create a dict of params
     e_params: VideoEncoderParams = arguments_to_encoder_params(

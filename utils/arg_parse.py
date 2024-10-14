@@ -114,7 +114,7 @@ Refer to https://ffmpeg.org//ffmpeg.html#Main-options
         "--to",
         type=str,
         required=False,
-        default='',
+        default="",
         help="""Stop reading the input at position.
 HOURS:MM:SS.MILLISECONDS
 --to and --t are mutually exclusive and --t has priority.
@@ -127,7 +127,7 @@ Refer to https://ffmpeg.org//ffmpeg.html#Main-options"
         "-vcodec",
         "--encoder",
         choices=['h264', 'h265', 'ffv1', 'vp9'],
-        default='h264',
+        default='',
         required=False,
         help="""Video encoder
 \n"""
@@ -135,7 +135,7 @@ Refer to https://ffmpeg.org//ffmpeg.html#Main-options"
     parser.add_argument(
         "-pix_fmt",
         "--pix_fmt",
-        default='yuv420p',
+        default="",
         required=False,
         help="""FFMpeg pix_fmt. rgb/yuv only.
 recommended: yuv420p, yuv420p10le, yuv420p12le
