@@ -32,6 +32,15 @@ str_to_video_codec: dict[str, VideoCodec] = {
 }
 
 
+vcodec_to_extension: dict[VideoCodec, str] = {
+    VideoCodec.H264: '.mkv',
+    VideoCodec.H265: '.mkv',
+    VideoCodec.FFV1: '.mkv',
+    VideoCodec.VP9: '.mkv',
+    VideoCodec.DNXHD: '.mxf',
+}
+
+
 class FieldOrder(Enum):
     PROGRESSIVE = 'progressive' # Progressive video
     TOP_FIELD_FIRST = 'tt'      # Interlaced video, top field coded and displayed first
@@ -64,6 +73,9 @@ class VideoInfo(TypedDict):
     frame_rate_avg: FrameRate
     is_frame_rate_fixed: bool
     codec: str
+    # DNxHD
+    profile: str
+
     pix_fmt: str
     color_range: str
     color_space: str
@@ -150,6 +162,8 @@ def extract_media_info(media_filepath: str) -> MediaInfo:
         'avg_frame_rate': [int(v) for v in v_stream.get('avg_frame_rate').split('/')],
 
         'codec': v_stream['codec_name'],
+        'profile': v_stream.get('profile', None),
+
         'pix_fmt': v_stream.get('pix_fmt', None),
         # Colors
         'color_space': v_stream.get('color_space', None),
@@ -161,6 +175,10 @@ def extract_media_info(media_filepath: str) -> MediaInfo:
         'duration': duration_s,
         'metadata': v_stream.get('tags', None),
     }
+
+    vprofile: str | None = video_info['profile']
+    if vprofile is not None:
+        video_info['profile'] = vprofile.replace(' ', '_').lower()
 
     if isinstance(video_info['metadata'], dict):
         tags_to_remove: tuple[str] = (

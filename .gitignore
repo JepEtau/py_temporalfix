@@ -164,3 +164,8 @@ cython_debug/
 vspython/
 external/
 log/
+
+*.mkv
+*.mp4
+*.gif
+*.mxf

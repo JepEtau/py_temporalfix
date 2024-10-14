@@ -75,9 +75,9 @@ If you get blending/ghosting on small movements or blocky artifacts, reduce this
     parser.add_argument(
         "-s",
         "--strength",
-        type=BoundedInteger(1, 400),
-        metavar="[1..400]",
-        default=300,
+        type=BoundedInteger(1, 800),
+        metavar="[1..800]",
+        default=400,
         required=False,
         help="""Suppression strength of temporal inconsistencies.
 Higher means more aggressive.

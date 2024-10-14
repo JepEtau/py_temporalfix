@@ -54,31 +54,14 @@ Please install these dependencies (refer to the documentation).
 
     # Parse arguments
     arguments: Namespace = arg_parse()
-    if arguments.log:
-        os.makedirs("logs", exist_ok=True)
-        log_dir: str = absolute_path(os.path.join("logs"))
-        log_filename: str = f"{os_path_basename(arguments.input)}.log"
-        logger.addHandler(
-            logging.FileHandler(os.path.join(log_dir, log_filename), mode="w")
-        )
-        logger.setLevel("DEBUG")
-        print(
-            lightcyan(f"Log saved in"), log_dir,
-            lightcyan("as:"), log_filename
-        )
-    else:
-        logger.setLevel("WARNING")
-
-    logger.debug(f"Python executable dir: {sys.executable}")
-    logger.debug(f"arguments: {sys.argv}")
-
-    debug: bool = arguments.debug
 
     # Check arguments validity
     in_media_path: str = absolute_path(arguments.input)
     if not os.path.isfile(in_media_path):
         sys.exit(red(f"Error: missing input file {in_media_path}"))
 
+    # Use output filepath before verification because it uses the
+    #   output directory to store the log file
     out_media_path: str = absolute_path(arguments.output)
     if not arguments.output:
         dirname, basename, extension = path_split(in_media_path)
@@ -89,8 +72,33 @@ Please install these dependencies (refer to the documentation).
         sys.exit(red(f"Error: output file must be different from input file: {out_media_path}"))
 
     out_dir: str = path_split(out_media_path)[0]
+    if not os.path.isdir(out_dir):
+        out_dir_parent = absolute_path(os.path.join(out_dir, os.pardir))
+        try:
+            os.makedirs(out_dir, exist_ok=True)
+        except:
+            sys.exit(red(f"Error: no write access to {out_dir_parent}"))
     if not is_access_granted(out_dir, 'w'):
         sys.exit(red(f"Error: no write access to {out_dir}"))
+
+    debug: bool = arguments.debug
+
+    if arguments.log:
+        log_dir, log_basename = path_split(out_media_path)[:2]
+        log_filepath: str = os.path.join(out_dir, f"{log_basename}.log")
+        logger.addHandler(
+            logging.FileHandler(log_filepath, mode="w")
+        )
+        logger.setLevel("DEBUG")
+        print(
+            lightcyan(f"Log saved in"), log_dir,
+            lightcyan("as:"), f"{log_basename}.log"
+        )
+    else:
+        logger.setLevel("WARNING")
+
+    logger.debug(f"Python executable dir: {sys.executable}")
+    logger.debug(f"arguments: {sys.argv}")
 
     print(lightcyan(f"Input video file:"), f"{in_media_path}")
     logger.debug(f"input: {in_media_path}")
@@ -136,6 +144,9 @@ Please install these dependencies (refer to the documentation).
         arguments=arguments,
         video_info=vs_video_info
     )
+    out_media_path = e_params.filepath
+    print(lightcyan(f"Output video file:"), f"{out_media_path}")
+    logger.debug(f"output: {out_media_path}")
     if debug:
         print(lightcyan("Encoder params:"))
         pprint(e_params)
@@ -294,7 +305,7 @@ Please install these dependencies (refer to the documentation).
             encoder_subprocess.stdin.write(frame)
             line = encoder_subprocess.stdout.readline().decode('utf-8')
             if line:
-                print(line.strip(), end='\r')
+                print(line.strip(), end='\r', file=sys.stderr)
         print()
     except:
         pass

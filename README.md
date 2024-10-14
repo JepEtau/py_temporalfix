@@ -77,7 +77,7 @@ For more details: [vs_temporalfix](https://github.com/pifroggi/vs_temporalfix)
 | Option&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |  Default | Description |
 | :--- | :---: | :--- |
 | `--t_radius` | `6` | The temporal radius sets the number of frames to average over. Higher means more stable. There is a big drop in performance for tr > 6 |
-| `--strength` | `300` | Suppression strength of temporal inconsistencies. Higher means more aggressive. If you get blending/ghosting on small movements or blocky artifacts, reduce this. |
+| `--strength` | `400` | Suppression strength of temporal inconsistencies. Higher means more aggressive. If you get blending/ghosting on small movements or blocky artifacts, reduce this. |
 
 
 ### Video encoding
@@ -123,5 +123,5 @@ Note: in case of any problem with vspython, create a portable python env and pop
 Append `--log` to the command line. The script:  
 - parses the script and display some info
 - displays the encoder command line
-- creates a log file in the `log` directory
+- creates a log file in the output directory
 Please attach this log when reporting an issue
