@@ -1,37 +1,21 @@
 from dataclasses import dataclass
-from enum import Enum
-import math
 from pprint import pprint
 import re
-import numpy as np
 import sys
 
-from utils.path_utils import get_extension
-
-from .p_print import red
 from .media import (
     ChannelOrder,
     FShape,
     MediaInfo,
-    VideoInfo
+    str_to_video_codec,
+    VideoCodec,
+    VideoInfo,
+    vcodec_to_extension,
 )
+from .p_print import red
+from .path_utils import get_extension
 from .pxl_fmt import PIXEL_FORMAT
 from .tools import ffmpeg_exe
-
-
-class VideoEncoder(Enum):
-    H264 = "libx264"
-    H265 = "libx265"
-    VP9 = "libvpx-vp9"
-    FFV1 = "ffv1"
-
-
-str_to_video_encoder: dict[str, VideoEncoder] = {
-    'h264': VideoEncoder.H264,
-    'h265': VideoEncoder.H265,
-    'ffv1': VideoEncoder.FFV1,
-    'vp9': VideoEncoder.VP9,
-}
 
 
 @dataclass
@@ -43,20 +27,21 @@ class FFv1Settings:
     threads: int = 8
 
 
-@dataclass(slots=True)
+@dataclass
 class H264Settings:
-    # bpp 8/10
     pass
 
 
-@dataclass(slots=True)
+@dataclass
 class H265Settings:
-    # bpp: 8/10/12
     pass
 
 
-EncoderSettings = FFv1Settings | H264Settings | H265Settings
+@dataclass
+class DNxHRSettings:
+    profile: str | None = None
 
+CodecSettings = FFv1Settings | H264Settings | H265Settings | DNxHRSettings
 
 
 @dataclass(slots=True)
@@ -68,13 +53,13 @@ class VideoEncoderParams:
     resize_algo: str = ''
     add_borders: bool = False
     # Encoder
-    encoder: VideoEncoder = VideoEncoder.H264
+    vcodec: VideoCodec = VideoCodec.H264
     pix_fmt: str = 'yuv420p'
     preset: str = 'medium'
     tune: str = ''
     crf: int = 15
     overwrite: bool = True
-    encoder_settings: EncoderSettings | None = None
+    codec_settings: CodecSettings | None = None
     # color_settings: ColorSettings | None = None
     ffmpeg_args: str = ''
     # Audio
@@ -85,51 +70,6 @@ class VideoEncoderParams:
 
 
 
-def encoder_frame_prop(
-    shape: FShape,
-    pix_fmt: str,
-    fp32: bool = False,
-) -> tuple[FShape, np.dtype, ChannelOrder, int, np.dtype] | None:
-    """Returns the shape, input dtype, channel order
-        size in bytes and output dtype of a frame to be encoded
-        fp32: force input dtype to float32, and channel order to bgr
-    """
-
-    # Encoder: pixel format
-    pixel_format = None
-    try:
-        pixel_format = PIXEL_FORMAT[pix_fmt]
-    except:
-        pass
-
-    # TODO: remove test of 'supported'
-    if (
-        pixel_format is None
-        or not pixel_format['supported']
-        or pixel_format['c_order'] == ''
-    ):
-        sys.exit(f"[E] {pix_fmt} is not a supported pixel format")
-
-    out_bpp, c_order = pixel_format['bpp'], pixel_format['c_order']
-    if out_bpp > 16:
-        sys.exit(f"[E] {pix_fmt} is not a supported pixel format (bpp>16)")
-    c_order = 'bgr' if 'bgr' in c_order or fp32 else 'rgb'
-
-    if 'f' in pixel_format:
-        sys.exit(f"[E] {pix_fmt} is not a supported pixel format (floating point)")
-    out_dtype: np.dtype = np.uint16 if out_bpp > 8 else np.uint8
-    in_dtype = np.float32 if fp32 else out_dtype
-
-    return (
-        shape,
-        in_dtype,
-        c_order,
-        math.prod(shape) * np.dtype(in_dtype).itemsize,
-        out_dtype
-    )
-
-
-
 def arguments_to_encoder_params(
     arguments,
     video_info: VideoInfo,
@@ -137,9 +77,9 @@ def arguments_to_encoder_params(
     """Parse the command line to set the encoder parameters
     """
     # Encoder: encoder, settings
-    encoder: VideoEncoder = str_to_video_encoder[arguments.encoder]
-    encoder_settings: EncoderSettings | None = None
-    if encoder == VideoEncoder.FFV1:
+    encoder: VideoCodec = str_to_video_codec[arguments.encoder]
+    encoder_settings: CodecSettings | None = None
+    if encoder == VideoCodec.FFV1:
         encoder_settings = FFv1Settings()
 
     # Extract pixfmt from ffmpeg_args
@@ -157,12 +97,12 @@ def arguments_to_encoder_params(
     # Create the encoder settings used by the encoder node
     params: VideoEncoderParams = VideoEncoderParams(
         filepath=video_info['filepath'],
-        encoder=encoder,
+        vcodec=encoder,
         pix_fmt=pix_fmt,
         preset=arguments.preset,
         tune=arguments.tune,
         crf=arguments.crf,
-        encoder_settings=encoder_settings,
+        codec_settings=encoder_settings,
         ffmpeg_args=arguments.ffmpeg_args,
         benchmark=arguments.benchmark,
     )
@@ -240,7 +180,7 @@ def generate_ffmpeg_encoder_cmd(
 
     # Encoder
     if "-vcodec" not in params.ffmpeg_args:
-        ffmpeg_command.extend(["-vcodec", f"{params.encoder.value}"])
+        ffmpeg_command.extend(["-vcodec", f"{params.vcodec.value}"])
 
     if "-pix_fmt" not in params.ffmpeg_args:
         ffmpeg_command.extend(["-pix_fmt", f"{params.pix_fmt}"])
@@ -253,6 +193,10 @@ def generate_ffmpeg_encoder_cmd(
 
     if "-crf" not in params.ffmpeg_args and params.crf != -1:
         ffmpeg_command.extend(["-crf", f"{params.crf}"])
+
+    if params.codec_settings is not None:
+        for k, v in params.codec_settings.__dict__.items():
+            ffmpeg_command.extend([f"-{k}", f"{v}"])
 
     # Audio/subtitles
     if params.copy_audio and True:
