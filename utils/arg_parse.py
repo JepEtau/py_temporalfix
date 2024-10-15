@@ -125,7 +125,7 @@ Refer to https://ffmpeg.org//ffmpeg.html#Main-options"
     # Encoder
     parser.add_argument(
         "-vcodec",
-        "--encoder",
+        "--vcodec",
         choices=['h264', 'h265', 'ffv1', 'vp9'],
         default='',
         required=False,

@@ -1,7 +1,5 @@
 import os
 import sys
-if sys.platform != "win32":
-    print(f"{sys.platform} is not supported", file=sys.stderr)
 from typing import Literal
 for subd in ("Scripts", "vs-scripts", "vs-plugins", ""):
     sys.path.insert(0, os.path.abspath(os.path.join("external", "vspython", subd)))
@@ -20,13 +18,14 @@ clip = clip.std.SetFrameProps(_Matrix=vs.MATRIX_BT709)
 
 strength: int
 tr: int
-clip = core.resize.Bicubic(clip, format=vs.YUV444P16, matrix_s="709")
-clip = vs_temporalfix(
-    clip,
-    strength=int(strength),
-    tr=int(tr),
-    debug=False
-)
+if clip.format != vs.YUV444P16:
+    clip = core.resize.Point(clip, format=vs.YUV444P16)
+# clip = vs_temporalfix(
+#     clip,
+#     strength=int(strength),
+#     tr=int(tr),
+#     debug=False
+# )
 
 pix_fmt: Literal['yuv420p', 'yuv444p16le']
 if pix_fmt == 'yuv444p16le':

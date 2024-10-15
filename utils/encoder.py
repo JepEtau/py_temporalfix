@@ -43,6 +43,13 @@ class DNxHRSettings:
 
 CodecSettings = FFv1Settings | H264Settings | H265Settings | DNxHRSettings
 
+@dataclass
+class ColorSettings:
+    colorspace: str | None = 'bt709'
+    color_primaries: str | None = 'bt709'
+    color_trc: str | None = 'bt709'
+    color_range: str | None = 'tv'
+
 
 @dataclass(slots=True)
 class VideoEncoderParams:
@@ -60,7 +67,7 @@ class VideoEncoderParams:
     crf: int | None = None
     overwrite: bool = True
     codec_settings: CodecSettings | None = None
-    # color_settings: ColorSettings | None = None
+    color_settings: ColorSettings | None = None
     ffmpeg_args: str = ''
     # Audio
     copy_audio: bool = False
@@ -85,8 +92,8 @@ def arguments_to_encoder_params(
     )
 
     # Encoder: encoder, settings
-    if arguments.encoder:
-        params.vcodec = str_to_video_codec[arguments.encoder]
+    if arguments.vcodec:
+        params.vcodec = str_to_video_codec[arguments.vcodec]
 
     if arguments.preset:
         params.preset = arguments.preset
@@ -116,8 +123,13 @@ def arguments_to_encoder_params(
     if params.pix_fmt not in PIXEL_FORMAT.keys():
         sys.exit(red(f"Error: pixel format \"{params.pix_fmt}\" is not supported"))
 
-    # Encoder: colorspace
-    # removed for this application
+    # Colorspace
+    params.color_settings = ColorSettings(
+        colorspace=video_info.get('color_space', None),
+        color_primaries=video_info.get('color_primaries', None),
+        color_trc=video_info.get('color_transfer', None),
+        color_range=video_info.get('color_range', None),
+    )
 
     # Set the output extension depending on the codec
     out_fp: str = video_info['filepath']
@@ -199,6 +211,15 @@ def generate_ffmpeg_encoder_cmd(
     ffmpeg_command.extend([
         "-map", "0:v"
     ])
+
+    # Color space
+    color_settings: ColorSettings = params.color_settings
+    for k, v in color_settings.__dict__.items():
+        if (
+            k not in params.ffmpeg_args
+            and v is not None
+        ):
+            ffmpeg_command.extend([f"-{k}:v", v])
 
     # Encoder
     if "-vcodec" not in params.ffmpeg_args:

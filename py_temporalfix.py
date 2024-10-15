@@ -296,6 +296,7 @@ Please install these dependencies (refer to the documentation).
     frame: bytes = None
     line: str = ''
     os.set_blocking(encoder_subprocess.stdout.fileno(), False)
+    os.set_blocking(vs_subprocess.stderr.fileno(), False)
     print(f"Processing:")
     try:
         for _ in range(frame_count):
@@ -305,6 +306,9 @@ Please install these dependencies (refer to the documentation).
                 print(red("None"))
             encoder_subprocess.stdin.write(frame)
             line = encoder_subprocess.stdout.readline().decode('utf-8')
+            if line:
+                print(line.strip(), end='\r', file=sys.stderr)
+            line = vs_subprocess.stderr.readline().decode('utf-8')
             if line:
                 print(line.strip(), end='\r', file=sys.stderr)
         print()
@@ -368,7 +372,7 @@ Please install these dependencies (refer to the documentation).
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     if sys.platform != 'win32':
-        sys.exit(f"Error: {sys.platform} is not a supported platform")
+        print(red(f"Error: {sys.platform} is not a supported platform. But trying..."))
     main()
 
 
