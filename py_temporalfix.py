@@ -9,6 +9,7 @@ import subprocess
 import sys
 
 from utils.arg_parse import arg_parse
+from utils.decoder import generate_ffmpeg_decoder_cmd
 from utils.encoder import (
     arguments_to_encoder_params,
     generate_ffmpeg_encoder_cmd,
@@ -41,7 +42,7 @@ def main():
         os.path.join(root_dir, "external", "vspython", "VSPipe.exe")
     )
     if sys.platform == "linux":
-        vspipe_exe = "/usr/bin/vspipe"
+        vspipe_exe = "vspipe"
 
     missing_tools: list[str] = check_missing_tools(
         tools={"VSPipe": vspipe_exe}
@@ -159,7 +160,7 @@ Please install these dependencies (refer to the documentation).
         vs_out_pix_fmt = 'yuv444p16le'
     vs_c_order = 'yuv'
     vs_video_info.update({
-        'dtype': np.uint8,
+        'dtype': np.uint16 if '16' in vs_out_pix_fmt else np.uint8,
         'bpp': PIXEL_FORMAT[vs_out_pix_fmt]['pipe_bpp'],
         'c_order': vs_c_order,
         'pix_fmt': vs_out_pix_fmt,
@@ -241,24 +242,25 @@ Please install these dependencies (refer to the documentation).
 
     # Clean environnment for vs
     vs_env = os.environ.copy()
-    del vs_env['PATH']
-    for k, v in vs_env.copy().items():
-        k_lower, v_lower = k.lower(), v.lower()
-        for n in forbidden_names:
-            if n in k_lower:
-                try:
-                    del vs_env[k]
-                    logger.debug(f"removing: {k}: {v}")
-                except:
-                    pass
+    if sys.platform == 'win32':
+        del vs_env['PATH']
+        for k, v in vs_env.copy().items():
+            k_lower, v_lower = k.lower(), v.lower()
+            for n in forbidden_names:
+                if n in k_lower:
+                    try:
+                        del vs_env[k]
+                        logger.debug(f"removing: {k}: {v}")
+                    except:
+                        pass
 
-            if n in v_lower:
-                try:
-                    del vs_env[k]
-                    logger.debug(f"removing: {k}: {v}")
-                except:
-                    pass
-    vs_env['PATH'] = sep.join(vs_path)
+                if n in v_lower:
+                    try:
+                        del vs_env[k]
+                        logger.debug(f"removing: {k}: {v}")
+                    except:
+                        pass
+        vs_env['PATH'] = sep.join(vs_path)
 
     logger.debug(f"Environment:\n{pformat(vs_env)}")
     # Environnment
@@ -270,7 +272,7 @@ Please install these dependencies (refer to the documentation).
     try:
         vs_subprocess = subprocess.Popen(
             vs_command,
-            stdin=subprocess.DEVNULL,
+            stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=vs_env,
@@ -291,16 +293,51 @@ Please install these dependencies (refer to the documentation).
         print(lightcyan("Pipe in:"))
         print(f"  shape: {w}x{h}")
         print(f"  nb of bytes: {in_nbytes}")
-        print(f"  frame_count: {frame_count}")
+        print(f"  nb of frames: {frame_count}")
+
+
+    # Decoder process
+    dec_command: list[str] = generate_ffmpeg_decoder_cmd(
+        in_vi=in_video_info, out_vi=vs_video_info
+    )
+    # if arguments.log:
+    print(lightcyan(" ".join(dec_command)))
+    dec_subprocess: subprocess.Popen | None = None
+    try:
+        dec_subprocess = subprocess.Popen(
+            dec_command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=vs_env,
+        )
+    except Exception as e:
+        print(f"[E] Unexpected error: {type(e)}", flush=True)
+
+    dec_nbytes: int = in_nbytes
+    if debug or arguments.log:
+        print(lightcyan("VS pipe in:"))
+        print(f"  shape: {w}x{h}")
+        print(f"  nb of bytes: {dec_nbytes}")
+        print(f"  nb of frames: {frame_count}")
 
     frame: bytes = None
     line: str = ''
     os.set_blocking(encoder_subprocess.stdout.fileno(), False)
     os.set_blocking(vs_subprocess.stderr.fileno(), False)
     print(f"Processing:")
+    for w_count in range(arguments.t_radius + 1):
+        print(f"decoding frame no. {w_count}")
+        vs_subprocess.stdin.write(
+            dec_subprocess.stdout.read(dec_nbytes)
+        )
+
+    line = dec_subprocess.stderr.readline().decode('utf-8')
+    if line:
+        print(line.strip(), file=sys.stderr)
+
     try:
         for _ in range(frame_count):
-            # print(f"reading frame no. {i}", end="\r")
             frame: bytes = vs_subprocess.stdout.read(in_nbytes)
             if frame is None:
                 print(red("None"))
@@ -311,6 +348,13 @@ Please install these dependencies (refer to the documentation).
             line = vs_subprocess.stderr.readline().decode('utf-8')
             if line:
                 print(line.strip(), end='\r', file=sys.stderr)
+
+            print(f"decoding frame no. {w_count}", end="\r")
+            if w_count == frame_count:
+                vs_subprocess.stdin.write(None)
+            elif w_count < frame_count:
+                vs_subprocess.communicate()
+
         print()
     except:
         pass
