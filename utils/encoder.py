@@ -252,8 +252,14 @@ def generate_ffmpeg_encoder_cmd(
         ])
 
     k, v = 'color_range', color_settings.color_range
-    if k not in params.ffmpeg_args and v is not None:
-        ffmpeg_command.extend([f"-{k}", v])
+    if (
+        k not in params.ffmpeg_args
+        and v is not None
+        and v.lower() not in ("unknown", "unspecified")
+    ):
+        limited: tuple[str] = ("tv", "mpeg", "limited")
+        # full: tuple[str] = ("pc", "jpeg", "full")
+        ffmpeg_command.extend([f"-{k}", "limited" if v.lower() in limited else "full"])
 
     # Audio/subtitles
     if params.copy_audio and True:
