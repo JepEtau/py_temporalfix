@@ -14,13 +14,25 @@ core.num_threads = int(cpu_count() - 2)
 core.max_cache_size = 20000
 from vs_temporalfix import vs_temporalfix
 
-input_fp: str
-clip = core.ffms2.Source(source=input_fp.replace("\"", ""), cache=0)
+# input_fp: str
+# clip = core.ffms2.Source(source=input_fp.replace("\"", ""), cache=0)
+# clip = core.bs.VideoSource(source=input_fp.replace("\"", ""), cachemode = 0)
+width: int
+height: int
+clip = core.raws.Source(
+    "-",
+    width=width,
+    height=height,
+    src_fmt="YUV444P16",
+    fpsnum=25,
+    fpsden=1
+)
 clip = clip.std.SetFrameProps(_Matrix=vs.MATRIX_BT709)
 
 strength: int
 tr: int
-clip = core.resize.Bicubic(clip, format=vs.YUV444P16, matrix_s="709")
+# if clip.format != vs.YUV444P16:
+#     clip = core.resize.Point(clip, format=vs.YUV444P16, matrix_in_s="709")
 clip = vs_temporalfix(
     clip,
     strength=int(strength),
@@ -28,10 +40,11 @@ clip = vs_temporalfix(
     debug=False
 )
 
-pix_fmt: Literal['yuv420p', 'yuv444p16le']
-if pix_fmt == 'yuv444p16le':
-    clip = core.resize.Bicubic(clip, format=vs.YUV444P16, matrix_s="709")
-else:
-    clip = core.resize.Bicubic(clip, format=vs.YUV420P8, matrix_s="709")
+# pix_fmt: Literal['yuv420p', 'yuv444p16le']
+# if pix_fmt == 'yuv444p16le' and clip.format != vs.YUV444P16:
+# clip = core.resize.Bicubic(clip, format=vs.YUV444P16, matrix_in_s="709")
+
+# if pix_fmt == 'yuv420p' and clip.format != vs.YUV420P8:
+#     clip = core.resize.Bicubic(clip, format=vs.YUV420P8, matrix_in_s="709")
 
 clip.set_output()

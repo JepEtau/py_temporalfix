@@ -1,6 +1,8 @@
 from argparse import Namespace
 from copy import deepcopy
 import logging
+from queue import Queue
+import time
 import numpy as np
 import os
 from pprint import pformat, pprint
@@ -9,7 +11,9 @@ import subprocess
 import sys
 
 from utils.arg_parse import arg_parse
+from utils.decoder import DecoderThread, generate_ffmpeg_decoder_cmd
 from utils.encoder import (
+    EncoderThread,
     arguments_to_encoder_params,
     generate_ffmpeg_encoder_cmd,
     VideoEncoderParams,
@@ -31,7 +35,7 @@ from utils.pxl_fmt import PIXEL_FORMAT
 from utils.p_print import *
 from utils.time_conversions import frame_rate_to_str
 from utils.tools import check_missing_tools
-from utils.vsscript import extract_info_from_vs_script
+from utils.vsscript import VsThread, extract_info_from_vs_script
 
 
 def main():
@@ -121,8 +125,8 @@ Please install these dependencies (refer to the documentation).
     in_video_info['filepath'] = in_media_path
 
     frame_count_str: str = f"    {in_video_info['frame_count']} frames"
-    h, w = in_video_info['shape'][:2]
-    dim_str: str = f", {w}x{h}"
+    in_h, in_w = in_video_info['shape'][:2]
+    dim_str: str = f", {in_w}x{in_h}"
     frame_rate_str: str = f", {frame_rate_to_str(in_video_info['frame_rate_r'])} fps"
     pix_fmt_str: str = f", {in_video_info['pix_fmt']}"
     _sar: tuple[int] = in_video_info['sar']
@@ -173,13 +177,16 @@ Please install these dependencies (refer to the documentation).
     logger.debug(f"VS video info:\n{pformat(vs_video_info)}")
 
     # VSpipe command
+    in_h, in_w = in_video_info['shape'][:2]
     vs_command: list[str] = [
         vspipe_exe,
         os.path.join(root_dir, "vstf.vpy"),
-        "--arg", f"input_fp=\"{arguments.input}\"",
+        # "--arg", f"input_fp=\"{arguments.input}\"",
+        "--arg", f"width={in_w}",
+        "--arg", f"height={in_h}",
         "--arg", f"tr={arguments.t_radius}",
         "--arg", f"strength={arguments.strength}",
-        "--arg", f"pix_fmt={vs_out_pix_fmt}",
+        # "--arg", f"pix_fmt={vs_out_pix_fmt}",
         "-",
     ]
     if debug:
@@ -190,25 +197,7 @@ Please install these dependencies (refer to the documentation).
 
     # Encoder command
     logger.debug(f"Encoder params:\n{pformat(e_params)}")
-    encoder_command: list[str] = generate_ffmpeg_encoder_cmd(
-        video_info=vs_video_info,
-        params=e_params,
-        in_media_info=in_media_info,
-    )
 
-    # Encoder process
-    encoder_subprocess: subprocess.Popen | None = None
-    try:
-        encoder_subprocess = subprocess.Popen(
-            encoder_command,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-    except Exception as e:
-        sys.exit(red(f"[E] Unexpected error: {type(e)}"))
-    if encoder_subprocess is None:
-        sys.exit(red(f"[E] Encoder process is not started"))
 
     # Clean environment for vspython
     # vs_path: list[str] = []
@@ -261,73 +250,88 @@ Please install these dependencies (refer to the documentation).
 
     logger.debug(f"Environment:\n{pformat(vs_env)}")
     # Environnment
-    if arguments.log or debug:
-        extract_info_from_vs_script(vs_command=vs_command, vs_env=vs_env)
+    # if arguments.log or debug:
+    #     extract_info_from_vs_script(vs_command=vs_command, vs_env=vs_env)
 
-    # Vs process
-    vs_subprocess: subprocess.Popen | None = None
-    try:
-        vs_subprocess = subprocess.Popen(
-            vs_command,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=vs_env,
-        )
-    except Exception as e:
-        print(f"[E] Unexpected error: {type(e)}", flush=True)
+    # if debug or arguments.log:
+    #     print(lightcyan("Encoder command:"))
+    #     print(lightgreen(' '.join(encoder_command)))
 
-    if debug or arguments.log:
-        print(lightcyan("Encoder command:"))
-        print(lightgreen(' '.join(encoder_command)))
-    logger.debug(f"Encoder command: {' '.join(encoder_command)}")
 
     # Characteristics of the pipe
     frame_count: int = in_video_info['frame_count']
-    h, w = in_video_info['shape'][:2]
-    in_nbytes: int = h * w * vs_video_info['bpp'] // 8
+    in_h, in_w = in_video_info['shape'][:2]
+    in_nbytes: int = in_h * in_w * vs_video_info['bpp'] // 8
     if debug:
         print(lightcyan("Pipe in:"))
-        print(f"  shape: {w}x{h}")
+        print(f"  shape: {in_w}x{in_h}")
         print(f"  nb of bytes: {in_nbytes}")
-        print(f"  frame_count: {frame_count}")
+        print(f"  nb of frames: {frame_count}")
 
-    frame: bytes = None
-    line: str = ''
-    os.set_blocking(encoder_subprocess.stdout.fileno(), False)
+
+    dec_nbytes: int = in_nbytes
+    # if debug or arguments.log:
+    print(lightcyan("VS pipe in:"))
+    print(f"  shape: {in_w}x{in_h}")
+    print(f"  nb of bytes: {dec_nbytes}")
+    print(f"  nb of frames: {frame_count}")
+
+    # os.set_blocking(dec_subprocess.stdout.fileno(), False)
+    # os.set_blocking(encoder_subprocess.stdout.fileno(), False)
+    # os.set_blocking(vs_subprocess.stderr.fileno(), False)
     print(f"Processing:")
-    try:
-        for _ in range(frame_count):
-            # print(f"reading frame no. {i}", end="\r")
-            frame: bytes = vs_subprocess.stdout.read(in_nbytes)
-            if frame is None:
-                print(red("None"))
-            encoder_subprocess.stdin.write(frame)
-            line = encoder_subprocess.stdout.readline().decode('utf-8')
-            if line:
-                print(line.strip(), end='\r', file=sys.stderr)
-        print()
-    except:
-        pass
 
-    stdout_b: bytes | None = None
-    stderr_b: bytes | None = None
-    try:
-        # Arbitrary timeout value
-        stdout_b, stderr_b = encoder_subprocess.communicate(timeout=10)
-    except:
-        encoder_subprocess.kill()
-        return
+    # Decoder
+    d_queue: Queue = Queue(maxsize=22)
+    e_queue: Queue = Queue(maxsize=22)
+    d_thread: DecoderThread = DecoderThread(
+        queue=d_queue,
+        in_video_info=in_video_info,
+        out_video_info=vs_video_info
+    )
+    vs_thread: VsThread = VsThread(
+        in_queue=d_queue,
+        out_queue=e_queue,
+        vs_command=vs_command,
+        vs_env=vs_env
+    )
+    e_thread: EncoderThread = EncoderThread(
+        queue=e_queue,
+        params=e_params,
+        in_video_info=vs_video_info,
+        in_media_info=in_media_info,
+    )
 
-    if stdout_b is not None:
-        stdout = stdout_b.decode('utf-8)')
-        if stdout:
-            logger.debug(f"FFmpeg stdout:\n{stdout}")
+    vs_thread.start()
+    d_thread.start()
+    e_thread.start()
 
-    if stderr_b is not None:
-        stderr = stderr_b.decode('utf-8)')
-        if stderr:
-            logger.debug(f"FFmpeg stderr:\n{stderr}")
+    while not vs_thread.is_ready():
+        time.sleep(0.1)
+
+    while True:
+        try:
+            e_queue.put(vs_thread.stdout.read(in_nbytes))
+        except Exception as e:
+            print("exception")
+            break
+
+    while vs_thread.is_alive() and not vs_thread.ended():
+        time.sleep(0.05)
+
+    remaining: bytes = vs_thread.remaining_bytes()
+    print(f"remaining: {len(remaining)}")
+    # remaining_frame_count: int = len(remaining) // dec_nbytes
+    if remaining is not None:
+        print(yellow(f"sending:"), len(remaining))
+        e_queue.put(remaining)
+    else:
+        print("nothing to send")
+    e_queue.put(None)
+
+    print()
+
+
 
     # For evaluation purpose
     # Enable this after validation
@@ -345,8 +349,8 @@ Please install these dependencies (refer to the documentation).
 
         if success and arguments.log:
             frame_count_str: str = f"    {out_vi['frame_count']} frames"
-            h, w = out_vi['shape'][:2]
-            dim_str: str = f", {w}x{h}"
+            in_h, in_w = out_vi['shape'][:2]
+            dim_str: str = f", {in_w}x{in_h}"
             frame_rate_str: str = f", {frame_rate_to_str(out_vi['frame_rate_r'])} fps"
             pix_fmt_str: str = f", {out_vi['pix_fmt']}"
             _sar: tuple[int] = out_vi['sar']

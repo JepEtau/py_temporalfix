@@ -1,7 +1,12 @@
 from dataclasses import dataclass
 from pprint import pprint
+from queue import Queue
 import re
+import subprocess
 import sys
+from threading import Thread
+
+from .logger import logger
 
 from .media import (
     ChannelOrder,
@@ -12,7 +17,7 @@ from .media import (
     VideoInfo,
     vcodec_to_extension,
 )
-from .p_print import red
+from .p_print import lightgreen, red
 from .path_utils import get_extension
 from .pxl_fmt import PIXEL_FORMAT
 from .tools import ffmpeg_exe
@@ -228,3 +233,70 @@ def generate_ffmpeg_encoder_cmd(
         ffmpeg_command.append('-y')
 
     return ffmpeg_command
+
+
+
+class EncoderThread(Thread):
+    def __init__(
+        self,
+        queue: Queue,
+        params: VideoEncoderParams,
+        in_video_info: VideoInfo,
+        in_media_info: MediaInfo,
+    ) -> None:
+        super().__init__()
+        self.queue: Queue = queue
+
+        self.encoder_command: list[str] = generate_ffmpeg_encoder_cmd(
+            video_info=in_video_info,
+            params=params,
+            in_media_info=in_media_info,
+        )
+        logger.debug(f"Encoder command: {' '.join(self.encoder_command)}")
+
+
+    def run(self) -> None:
+        encoder_subprocess: subprocess.Popen | None = None
+        try:
+            encoder_subprocess = subprocess.Popen(
+                self.encoder_command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+        except Exception as e:
+            sys.exit(red(f"[E] Unexpected error: {type(e)}"))
+
+        if encoder_subprocess is None:
+            sys.exit(red(f"[E] Encoder process is not started"))
+
+        no: int = 0
+        while True:
+            frame = self.queue.get()
+            if frame is None:
+                break
+            print(lightgreen(f"encoding {no}"))
+            encoder_subprocess.stdin.write(frame)
+            no += 1
+
+        print(lightgreen(f"encoding ended"))
+
+
+        stdout_b: bytes | None = None
+        stderr_b: bytes | None = None
+        try:
+            # Arbitrary timeout value
+            stdout_b, stderr_b = encoder_subprocess.communicate(timeout=10)
+        except:
+            encoder_subprocess.kill()
+            return
+
+        if stdout_b is not None:
+            stdout = stdout_b.decode('utf-8)')
+            if stdout:
+                logger.debug(f"FFmpeg stdout:\n{stdout}")
+
+        if stderr_b is not None:
+            stderr = stderr_b.decode('utf-8)')
+            if stderr:
+                logger.debug(f"FFmpeg stderr:\n{stderr}")
