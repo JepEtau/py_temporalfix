@@ -13,11 +13,10 @@ from vs_temporalfix import vs_temporalfix
 
 input_fp: str
 clip = core.bs.VideoSource(source=input_fp.replace("\"", ""), cachemode = 0)
-# TODO, evaluate if needed
 # clip = clip.std.SetFrameProps(_Matrix=vs.MATRIX_BT709)
 # clip = clip.std.SetFrameProps(_Primaries=vs.MATRIX_BT709)
 # clip = clip.std.SetFrameProps(_ChromaLocation=vs.MATRIX_BT709)
-# clip = clip.std.SetFrameProps(_ColorRange=vs.RANGE_FULL)
+clip = clip.std.SetFrameProps(_ColorRange=vs.RANGE_FULL)
 
 strength: int
 tr: int
