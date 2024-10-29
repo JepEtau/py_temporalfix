@@ -91,7 +91,7 @@ def arguments_to_encoder_params(
         pix_fmt=video_info['pix_fmt'],
     )
 
-    # Encoder: encoder, settings
+    # Encoder: codec, settings
     if arguments.vcodec:
         params.vcodec = str_to_video_codec[arguments.vcodec]
 
@@ -118,8 +118,10 @@ def arguments_to_encoder_params(
         and (re_match := re.search(re.compile(r"-pix_fmt\s([a-y0-9]+)"), arguments.ffmpeg_args))
     ):
         params.pix_fmt = re_match.group(1)
+
     elif arguments.pix_fmt:
         params.pix_fmt = arguments.pix_fmt
+
     if params.pix_fmt not in PIXEL_FORMAT.keys():
         sys.exit(red(f"Error: pixel format \"{params.pix_fmt}\" is not supported"))
 
@@ -211,7 +213,10 @@ def generate_ffmpeg_encoder_cmd(
     ffmpeg_command.extend(["-map", "0:v"])
 
     # Encoder
-    if "-vcodec" not in params.ffmpeg_args:
+    if (
+        "-vcodec" not in params.ffmpeg_args
+        and "-c:v" not in params.ffmpeg_args
+    ):
         ffmpeg_command.extend(["-vcodec", f"{params.vcodec.value}"])
 
     if "-pix_fmt" not in params.ffmpeg_args:
