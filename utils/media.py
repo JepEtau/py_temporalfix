@@ -21,9 +21,11 @@ class VideoCodec(Enum):
     VP9 = "libvpx-vp9"
     FFV1 = "ffv1"
     DNXHD = "dnxhd"
+    HEVC = "libx265"
 
 
 str_to_video_codec: dict[str, VideoCodec] = {
+    'hevc': VideoCodec.HEVC,
     'h264': VideoCodec.H264,
     'h265': VideoCodec.H265,
     'ffv1': VideoCodec.FFV1,

@@ -127,7 +127,7 @@ Refer to https://ffmpeg.org//ffmpeg.html#Main-options"
         "-vcodec",
         "--vcodec",
         choices=['h264', 'h265', 'ffv1', 'vp9'],
-        default='',
+        default='h265',
         required=False,
         help="""Video encoder
 \n"""

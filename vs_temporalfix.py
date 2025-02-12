@@ -231,15 +231,15 @@ def vs_temporalfix(clip, strength=400, tr=6, exclude=None, debug=False):
     motionmask_window = core.std.Interleave([motionmask_window, motionmask_pref])
 
     #create motionmask to protect large motions
-    motionmask_window = core.retinex.MSRCP(
-        motionmask_window,
-        sigma=[motionmask_window.width//57],
-        lower_thr=0.011,
-        upper_thr=0.011,
-        fulls=True,
-        fulld=True,
-        chroma_protect=1.2
-    )
+    # motionmask_window = core.retinex.MSRCP(
+    #     motionmask_window,
+    #     sigma=[motionmask_window.width//57],
+    #     lower_thr=0.011,
+    #     upper_thr=0.011,
+    #     fulls=True,
+    #     fulld=True,
+    #     chroma_protect=1.2
+    # )
     motionmask_window = core.resize.Bicubic(
         motionmask_window,
         width=(motionmask_window.width / motionmask_window.height) * 350,
