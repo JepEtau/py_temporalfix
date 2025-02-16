@@ -278,8 +278,11 @@ def generate_ffmpeg_encoder_cmd(
             ])
 
     # Custom params
-    if params.ffmpeg_args:
-        ffmpeg_command.extend(params.ffmpeg_args.split(" "))
+    codec_params: str = params.ffmpeg_args
+    if not codec_params and params.vcodec == VideoCodec.H265:
+        # Add default if no custom params for H265
+        codec_params = "-profile:v main422-10 -x265-params sao=0"
+    ffmpeg_command.extend(codec_params.split(" "))
 
     # Add metadata
     if get_extension(params.filepath) == ".mkv":

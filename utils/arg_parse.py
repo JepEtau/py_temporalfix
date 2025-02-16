@@ -135,7 +135,7 @@ Refer to https://ffmpeg.org//ffmpeg.html#Main-options"
     parser.add_argument(
         "-pix_fmt",
         "--pix_fmt",
-        default="",
+        default="yuv420p10le",
         required=False,
         help="""FFMpeg pix_fmt. rgb/yuv only.
 recommended: yuv420p, yuv420p10le, yuv420p12le
@@ -156,7 +156,7 @@ recommended: yuv420p, yuv420p10le, yuv420p12le
             'slower',
             'veryslow',
         ],
-        default='',
+        default='slow',
         required=False,
         help="""FFmpeg video preset
 \n"""
@@ -166,7 +166,7 @@ recommended: yuv420p, yuv420p10le, yuv420p12le
         "-crf",
         "--crf",
         type=int,
-        default=-1,
+        default=16,
         required=False,
         help="""FFmpeg CRF
 \n"""
