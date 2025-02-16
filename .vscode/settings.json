@@ -3,6 +3,7 @@
         "**/__pycache__": true,
         "**/*.mkv": true,
         "**/*.mp4": true,
+        "**/*.mxf": true,
         "**/*.png": true,
         "**/*.jpg": true,
         "**/*.so": true,

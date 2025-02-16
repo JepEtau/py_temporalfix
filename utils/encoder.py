@@ -43,6 +43,13 @@ class DNxHRSettings:
 
 CodecSettings = FFv1Settings | H264Settings | H265Settings | DNxHRSettings
 
+@dataclass
+class ColorSettings:
+    colorspace: str | None = 'bt709'
+    color_primaries: str | None = 'bt709'
+    color_trc: str | None = 'bt709'
+    color_range: str | None = 'tv'
+
 
 @dataclass(slots=True)
 class VideoEncoderParams:
@@ -54,13 +61,13 @@ class VideoEncoderParams:
     add_borders: bool = False
     # Encoder
     vcodec: VideoCodec = VideoCodec.H264
-    pix_fmt: str = 'yuv420p'
-    preset: str = 'medium'
-    tune: str = ''
-    crf: int = 15
+    pix_fmt: str | None = 'yuv420p'
+    preset: str | None = 'medium'
+    tune: str | None = None
+    crf: int | None = None
     overwrite: bool = True
     codec_settings: CodecSettings | None = None
-    # color_settings: ColorSettings | None = None
+    color_settings: ColorSettings | None = None
     ffmpeg_args: str = ''
     # Audio
     copy_audio: bool = False
@@ -76,36 +83,65 @@ def arguments_to_encoder_params(
 ) -> VideoEncoderParams:
     """Parse the command line to set the encoder parameters
     """
-    # Encoder: encoder, settings
-    encoder: VideoCodec = str_to_video_codec[arguments.encoder]
-    encoder_settings: CodecSettings | None = None
-    if encoder == VideoCodec.FFV1:
-        encoder_settings = FFv1Settings()
-
-    # Extract pixfmt from ffmpeg_args
-    pix_fmt: str = arguments.pix_fmt
-    if (re_match := re.search(
-        re.compile(r"-pix_fmt\s([a-y0-9]+)"), arguments.ffmpeg_args)
-    ):
-        pix_fmt = re_match.group(1)
-    if pix_fmt not in PIXEL_FORMAT.keys():
-        sys.exit(red(f"Error: pixel format \"{pix_fmt}\" is not supported"))
-
-    # Encoder: colorspace
-    # removed for this application
-
-    # Create the encoder settings used by the encoder node
+    # Copy from input
     params: VideoEncoderParams = VideoEncoderParams(
-        filepath=video_info['filepath'],
-        vcodec=encoder,
-        pix_fmt=pix_fmt,
-        preset=arguments.preset,
-        tune=arguments.tune,
-        crf=arguments.crf,
-        codec_settings=encoder_settings,
-        ffmpeg_args=arguments.ffmpeg_args,
-        benchmark=arguments.benchmark,
+        filepath='',
+        vcodec=str_to_video_codec[video_info['codec']],
+        keep_sar=True,
+        pix_fmt=video_info['pix_fmt'],
     )
+
+    # Encoder: codec, settings
+    if arguments.vcodec:
+        params.vcodec = str_to_video_codec[arguments.vcodec]
+
+    if arguments.preset:
+        params.preset = arguments.preset
+    if arguments.tune:
+        params.tune = arguments.tune
+    if arguments.crf:
+        params.crf = arguments.crf
+
+    vcodec: VideoCodec = params.vcodec
+    if vcodec == VideoCodec.FFV1:
+        params.codec_settings = FFv1Settings()
+
+    elif vcodec == VideoCodec.DNXHD:
+        params.codec_settings = DNxHRSettings(
+            profile=video_info['profile']
+        )
+        params.preset = params.tune = params.crf = None
+
+    # Extract pix_fmt from ffmpeg_args
+    if (
+        not arguments.pix_fmt
+        and (re_match := re.search(re.compile(r"-pix_fmt\s([a-y0-9]+)"), arguments.ffmpeg_args))
+    ):
+        params.pix_fmt = re_match.group(1)
+
+    elif arguments.pix_fmt:
+        params.pix_fmt = arguments.pix_fmt
+
+    if params.pix_fmt not in PIXEL_FORMAT.keys():
+        sys.exit(red(f"Error: pixel format \"{params.pix_fmt}\" is not supported"))
+
+    # Colorspace
+    params.color_settings = ColorSettings(
+        colorspace=video_info.get('color_space', None),
+        color_primaries=video_info.get('color_primaries', None),
+        color_trc=video_info.get('color_transfer', None),
+        color_range=video_info.get('color_range', None),
+    )
+
+    # Set the output extension depending on the codec
+    out_fp: str = video_info['filepath']
+    if get_extension(out_fp) == '.$$$':
+        out_fp = out_fp.replace('.$$$', vcodec_to_extension[vcodec])
+    params.filepath = out_fp
+
+    # Modify the encoder settings used by the encoder node
+    params.ffmpeg_args = arguments.ffmpeg_args
+    params.benchmark = arguments.benchmark
 
     # Copy audio stream if no video clipping
     if (
@@ -174,29 +210,61 @@ def generate_ffmpeg_encoder_cmd(
     if sar_dar:
         ffmpeg_command.extend(["-vf", ','.join(sar_dar)])
 
-    ffmpeg_command.extend([
-        "-map", "0:v"
-    ])
+    ffmpeg_command.extend(["-map", "0:v"])
 
     # Encoder
-    if "-vcodec" not in params.ffmpeg_args:
+    if (
+        "-vcodec" not in params.ffmpeg_args
+        and "-c:v" not in params.ffmpeg_args
+    ):
         ffmpeg_command.extend(["-vcodec", f"{params.vcodec.value}"])
 
     if "-pix_fmt" not in params.ffmpeg_args:
         ffmpeg_command.extend(["-pix_fmt", f"{params.pix_fmt}"])
 
+    # Settings
     if "-preset" not in params.ffmpeg_args and params.preset:
         ffmpeg_command.extend(["-preset", f"{params.preset}"])
 
     if "-tune" not in params.ffmpeg_args and params.tune:
         ffmpeg_command.extend(["-tune", f"{params.tune}"])
 
-    if "-crf" not in params.ffmpeg_args and params.crf != -1:
+    if (
+        "-crf" not in params.ffmpeg_args
+        and params.crf is not None
+        and params.crf > 0
+    ):
         ffmpeg_command.extend(["-crf", f"{params.crf}"])
 
     if params.codec_settings is not None:
         for k, v in params.codec_settings.__dict__.items():
-            ffmpeg_command.extend([f"-{k}", f"{v}"])
+            ffmpeg_command.extend([f"-{k}", v])
+
+    # Color space
+    color_settings: ColorSettings = params.color_settings
+    _tmp_array: list[str] = []
+    for k, v in color_settings.__dict__.items():
+        if k == 'color_range':
+            continue
+        if (
+            k not in params.ffmpeg_args
+            and v is not None
+        ):
+            _tmp_array.append(f"{k}={v}")
+    if _tmp_array:
+        ffmpeg_command.extend([
+            "-vf",  f"setparams={':'.join(_tmp_array)}"
+        ])
+
+    k, v = 'color_range', color_settings.color_range
+    if (
+        k not in params.ffmpeg_args
+        and v is not None
+        and v.lower() not in ("unknown", "unspecified")
+    ):
+        limited: tuple[str] = ("tv", "mpeg", "limited")
+        # full: tuple[str] = ("pc", "jpeg", "full")
+        ffmpeg_command.extend([f"-{k}", "limited" if v.lower() in limited else "full"])
 
     # Audio/subtitles
     if params.copy_audio and True:
@@ -210,8 +278,11 @@ def generate_ffmpeg_encoder_cmd(
             ])
 
     # Custom params
-    if params.ffmpeg_args:
-        ffmpeg_command.extend(params.ffmpeg_args.split(" "))
+    codec_params: str = params.ffmpeg_args
+    if not codec_params and params.vcodec == VideoCodec.H265:
+        # Add default if no custom params for H265
+        codec_params = "-profile:v main422-10 -x265-params sao=0"
+    ffmpeg_command.extend(codec_params.split(" "))
 
     # Add metadata
     if get_extension(params.filepath) == ".mkv":
@@ -226,5 +297,9 @@ def generate_ffmpeg_encoder_cmd(
     ffmpeg_command.append(params.filepath)
     if params.overwrite:
         ffmpeg_command.append('-y')
+
+
+    # _tmp: str = "A:\\py_temporalfix\\external\\ffmpeg\\ffmpeg.exe -hide_banner -loglevel error -stats -f rawvideo -pixel_format yuv444p16le -video_size 1488x1128 -r 25:1 -i pipe:0 -vf setdar=62/47 -vcodec libx264 -bsf:v h264_metadata=colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1 -pix_fmt yuv420p -colorspace 1 -color_primaries 1 -color_trc 1 -color_range tv N:\\cache\\g_fin\\eval\\g_fin_005__j_ep99_hr_st_fixed_6_400_x264.mkv -y"
+    # ffmpeg_command = _tmp.split(" ")
 
     return ffmpeg_command

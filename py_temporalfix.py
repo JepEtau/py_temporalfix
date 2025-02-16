@@ -41,7 +41,7 @@ def main():
         os.path.join(root_dir, "external", "vspython", "VSPipe.exe")
     )
     if sys.platform == "linux":
-        vspipe_exe = "/usr/bin/vspipe"
+        vspipe_exe = "vspipe"
 
     missing_tools: list[str] = check_missing_tools(
         tools={"VSPipe": vspipe_exe}
@@ -134,10 +134,11 @@ Please install these dependencies (refer to the documentation).
     logger.debug(f"input video format: {in_vi_str}")
 
     vs_video_info: VideoInfo = deepcopy(in_video_info)
-    vs_video_info['filepath'] = out_media_path
-
-    print(lightcyan(f"Output video file:"), f"{out_media_path}")
-    logger.debug(f"output: {out_media_path}")
+    # If not specified, the output filepath will be generated depending on the codec
+    if arguments.output:
+        vs_video_info['filepath'] = out_media_path
+    else:
+        vs_video_info['filepath'] = os.path.join(*path_split(out_media_path)[:2]) + ".$$$"
 
     # Parse arguments and create a dict of params
     e_params: VideoEncoderParams = arguments_to_encoder_params(
@@ -158,7 +159,7 @@ Please install these dependencies (refer to the documentation).
         vs_out_pix_fmt = 'yuv444p16le'
     vs_c_order = 'yuv'
     vs_video_info.update({
-        'dtype': np.uint8,
+        'dtype': np.uint16 if '16' in vs_out_pix_fmt else np.uint8,
         'bpp': PIXEL_FORMAT[vs_out_pix_fmt]['pipe_bpp'],
         'c_order': vs_c_order,
         'pix_fmt': vs_out_pix_fmt,
@@ -240,24 +241,25 @@ Please install these dependencies (refer to the documentation).
 
     # Clean environnment for vs
     vs_env = os.environ.copy()
-    del vs_env['PATH']
-    for k, v in vs_env.copy().items():
-        k_lower, v_lower = k.lower(), v.lower()
-        for n in forbidden_names:
-            if n in k_lower:
-                try:
-                    del vs_env[k]
-                    logger.debug(f"removing: {k}: {v}")
-                except:
-                    pass
+    if sys.platform == 'win32':
+        del vs_env['PATH']
+        for k, v in vs_env.copy().items():
+            k_lower, v_lower = k.lower(), v.lower()
+            for n in forbidden_names:
+                if n in k_lower:
+                    try:
+                        del vs_env[k]
+                        logger.debug(f"removing: {k}: {v}")
+                    except:
+                        pass
 
-            if n in v_lower:
-                try:
-                    del vs_env[k]
-                    logger.debug(f"removing: {k}: {v}")
-                except:
-                    pass
-    vs_env['PATH'] = sep.join(vs_path)
+                if n in v_lower:
+                    try:
+                        del vs_env[k]
+                        logger.debug(f"removing: {k}: {v}")
+                    except:
+                        pass
+        vs_env['PATH'] = sep.join(vs_path)
 
     logger.debug(f"Environment:\n{pformat(vs_env)}")
     # Environnment
@@ -295,6 +297,7 @@ Please install these dependencies (refer to the documentation).
     frame: bytes = None
     line: str = ''
     os.set_blocking(encoder_subprocess.stdout.fileno(), False)
+    os.set_blocking(vs_subprocess.stderr.fileno(), False)
     print(f"Processing:")
     try:
         for _ in range(frame_count):
@@ -304,6 +307,9 @@ Please install these dependencies (refer to the documentation).
                 print(red("None"))
             encoder_subprocess.stdin.write(frame)
             line = encoder_subprocess.stdout.readline().decode('utf-8')
+            if line:
+                print(line.strip(), end='\r', file=sys.stderr)
+            line = vs_subprocess.stderr.readline().decode('utf-8')
             if line:
                 print(line.strip(), end='\r', file=sys.stderr)
         print()
@@ -367,7 +373,7 @@ Please install these dependencies (refer to the documentation).
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     if sys.platform != 'win32':
-        sys.exit(f"Error: {sys.platform} is not a supported platform")
+        print(red(f"Error: {sys.platform} is not a supported platform. But trying..."))
     main()
 
 

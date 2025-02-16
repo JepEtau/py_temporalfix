@@ -21,9 +21,11 @@ class VideoCodec(Enum):
     VP9 = "libvpx-vp9"
     FFV1 = "ffv1"
     DNXHD = "dnxhd"
+    HEVC = "libx265"
 
 
 str_to_video_codec: dict[str, VideoCodec] = {
+    'hevc': VideoCodec.HEVC,
     'h264': VideoCodec.H264,
     'h265': VideoCodec.H265,
     'ffv1': VideoCodec.FFV1,
@@ -166,11 +168,11 @@ def extract_media_info(media_filepath: str) -> MediaInfo:
 
         'pix_fmt': v_stream.get('pix_fmt', None),
         # Colors
-        'color_space': v_stream.get('color_space', None),
-        'color_matrix': v_stream.get('color_matrix', None),
-        'color_transfer': v_stream.get('color_transfer', None),
-        'color_primaries': v_stream.get('color_primaries', None),
-        'color_range': v_stream.get('color_range', None),
+        'color_space': v_stream.get('color_space', 'unknown'),
+        'color_matrix': v_stream.get('color_matrix', 'unknown'),
+        'color_transfer': v_stream.get('color_transfer', 'unknown'),
+        'color_primaries': v_stream.get('color_primaries', 'unknown'),
+        'color_range': v_stream.get('color_range', 'limited'),
 
         'duration': duration_s,
         'metadata': v_stream.get('tags', None),

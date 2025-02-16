@@ -85,7 +85,7 @@ Parameters passed to the encoder. Refer to the [FFmpeg documentation](https://ff
 
 | Option&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |   Default  | Description
 | :--- | :---: | :--- |
-| `--encoder`   | `h264`    |  `h264`, `h265`, `ffv1`, `vp9`|
+| `--vcodec`    | `h264`    |  `h264`, `h265`, `ffv1`, `vp9` |
 | `--pix_fmt`   | `yuv420p` |  rgb or yuv formats  |
 | `--preset`    |  -         | `ultrafast`, `superfast`, `veryfast`, `faster`, `fast`, `medium`, `slow`, `slower`, `veryslow`   |
 | `--crf`       |    `23`|  0 to 51  |
