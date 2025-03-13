@@ -196,6 +196,8 @@ Please install these dependencies (refer to the documentation).
         params=e_params,
         in_media_info=in_media_info,
     )
+    if debug:
+        pprint(encoder_command)
 
     # Encoder process
     encoder_subprocess: subprocess.Popen | None = None
@@ -320,7 +322,7 @@ Please install these dependencies (refer to the documentation).
     stderr_b: bytes | None = None
     try:
         # Arbitrary timeout value
-        stdout_b, stderr_b = encoder_subprocess.communicate(timeout=10)
+        stdout_b, stderr_b = encoder_subprocess.communicate(timeout=30)
     except:
         encoder_subprocess.kill()
         return

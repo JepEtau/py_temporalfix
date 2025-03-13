@@ -298,6 +298,7 @@ def generate_ffmpeg_encoder_cmd(
     if params.overwrite:
         ffmpeg_command.append('-y')
 
+    ffmpeg_command.remove("")
 
     # _tmp: str = "A:\\py_temporalfix\\external\\ffmpeg\\ffmpeg.exe -hide_banner -loglevel error -stats -f rawvideo -pixel_format yuv444p16le -video_size 1488x1128 -r 25:1 -i pipe:0 -vf setdar=62/47 -vcodec libx264 -bsf:v h264_metadata=colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1 -pix_fmt yuv420p -colorspace 1 -color_primaries 1 -color_trc 1 -color_range tv N:\\cache\\g_fin\\eval\\g_fin_005__j_ep99_hr_st_fixed_6_400_x264.mkv -y"
     # ffmpeg_command = _tmp.split(" ")
