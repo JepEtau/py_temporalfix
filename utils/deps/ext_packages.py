@@ -182,7 +182,6 @@ def download_install_ext_package(
 
 def install_ext_packages(
     packages: tuple[ExtPackage],
-    rehost_url_base: str,
     retry: int = 3,
     threads: int = 1,
 ) -> bool:
@@ -198,9 +197,6 @@ def install_ext_packages(
         "•",
         TimeRemainingColumn(),
     )
-
-    for package in packages:
-        package.host = rehost_url_base
 
     packages = [package for package in packages if not package.skip]
     if threads == 1:

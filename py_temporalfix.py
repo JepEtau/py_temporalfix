@@ -310,10 +310,10 @@ Please install these dependencies (refer to the documentation).
             encoder_subprocess.stdin.write(frame)
             line = encoder_subprocess.stdout.readline().decode('utf-8')
             if line:
-                print(line.strip(), end='\r', file=sys.stderr)
+                print(line.strip(), end='\n', file=sys.stderr, flush=True)
             line = vs_subprocess.stderr.readline().decode('utf-8')
             if line:
-                print(line.strip(), end='\r', file=sys.stderr)
+                print(line.strip(), end='\n', file=sys.stderr, flush=True)
         print()
     except:
         pass

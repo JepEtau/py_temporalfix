@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import sys
 from typing import Literal
 for subd in ("Scripts", "vs-scripts", "vs-plugins", ""):

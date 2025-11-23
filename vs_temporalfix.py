@@ -3,6 +3,9 @@
 # Script by pifroggi https://github.com/pifroggi/vs_temporalfix
 # or tepete on the "Enhance Everything!" Discord Server
 
+import functools
+import os
+import sys
 import vapoursynth as vs
 
 core = vs.core
@@ -275,6 +278,10 @@ def vs_temporalfix(clip, strength=400, tr=6, denoise=False, exclude=None, debug=
     # add borders
     clip = core.std.AddBorders(clip, left=extra_pad, right=extra_pad, top=extra_pad, bottom=extra_pad)
     clip = core.fb.FillBorders(clip, left=extra_pad, right=extra_pad, top=extra_pad, bottom=extra_pad, mode="fillmargins", interlaced=0)
+
+    ref_height = clip.height
+    ref_width = clip.width
+
     ref  = clip
 
     ##### motion mask #####
@@ -304,6 +311,22 @@ def vs_temporalfix(clip, strength=400, tr=6, denoise=False, exclude=None, debug=
     mm = core.resize.Point(mm, width=ref.width, height=ref.height)
     mm = core.std.BoxBlur(mm, hradius=4, vradius=4, hpasses=2, vpasses=2) # feather mask
 
+
+    # mm = core.resize.Point(mm, width=ref.width, height=ref.height)
+    # mm = core.std.Crop(mm, left=extra_pad, right=extra_pad, top=extra_pad, bottom=extra_pad)
+    # return mm
+
+
+    # def save_frame(n, frame):
+    #     print(n, file=sys.stderr)
+    #     rgb = core.resize.Point(frame, format=vs.RGB24, matrix_in_s="709")
+    #     # output_path = os.path.join("A:", f"frame_{n+1:03d}.png")
+    #     written = core.imwri.Write(rgb, "PNG", "frame_%03d.png")
+    #     # print(output_path, file=sys.stderr)
+    #     return frame
+
+    # mm = core.std.FrameEval(mm, functools.partial(save_frame, frame=mm))
+
     ##### prefilter to help with motion vectors #####
 
     # resize clips if needed, convert to low bit depth for faster motion vector search
@@ -319,7 +342,17 @@ def vs_temporalfix(clip, strength=400, tr=6, denoise=False, exclude=None, debug=
     pref = DegrainPrefilter(pref, strength // 2, tr)       # main prefilter step
     pref = AverageColorFixFast(pref, pref_ref, 32)         # fix low freqs
     pref = core.std.MaskedMerge(pref, pref_ref, mm_resize) # fix blending/ghosting
+
+    # pref = core.resize.Point(pref, width=ref_width, height=ref_height, format=orig_format, range=orig_range, dither_type="error_diffusion")
+    # pref = core.std.Crop(pref, left=extra_pad, right=extra_pad, top=extra_pad, bottom=extra_pad)
+    # return pref
+
     pref = TweakDarks(pref, s0=Str, c=Amp, chroma=chroma)  # brighten darks
+
+    # pref = core.resize.Point(pref, width=ref_width, height=ref_height, format=orig_format, range=orig_range, dither_type="error_diffusion")
+    # pref = core.std.Crop(pref, left=extra_pad, right=extra_pad, top=extra_pad, bottom=extra_pad)
+    # return pref
+
 
     ##### degrain #####
 
@@ -392,13 +425,27 @@ def vs_temporalfix(clip, strength=400, tr=6, denoise=False, exclude=None, debug=
             clip = core.mvsf.Degrain(clip, clip_sup, vec, **degrain_args)
         clip = core.resize.Point(clip, format=vs.YUV444P16)
 
+
+    # clip = core.resize.Point(clip, width=ref_width, height=ref_height, format=orig_format, range=orig_range, dither_type="error_diffusion")
+    # clip = core.std.Crop(clip, left=extra_pad, right=extra_pad, top=extra_pad, bottom=extra_pad)
+    # return clip
+
+
     ##### recover details #####
+    # clip = core.resize.Point(clip, width=ref_width, height=ref_height, format=orig_format, range=orig_range, dither_type="error_diffusion")
+    # clip = core.std.Crop(clip, left=extra_pad, right=extra_pad, top=extra_pad, bottom=extra_pad)
+    # return clip
 
     # colorfix to counter denoising sometimes changing local brightness
     clip = AverageColorFix(clip, ref, 4, 4)
 
     # contrasharp to counter slight blur
     clip = ContraSharpening(clip, ref, rep=24, planes=[0])
+
+    # clip = core.resize.Point(clip, width=ref_width, height=ref_height, format=orig_format, range=orig_range, dither_type="error_diffusion")
+    # clip = core.std.Crop(clip, left=extra_pad, right=extra_pad, top=extra_pad, bottom=extra_pad)
+    # return clip
+
 
     # mask to find areas where temporalfix may have removed some texture
     fm_post = core.std.ShufflePlanes(clip, planes=0, colorfamily=vs.GRAY)
@@ -411,14 +458,24 @@ def vs_temporalfix(clip, strength=400, tr=6, denoise=False, exclude=None, debug=
     if not denoise:
         clip = core.std.MaskedMerge(clip, ref, fm_post, planes=0)
 
+    # fm_post = core.resize.Point(fm_post, width=ref_width, height=ref_height)
+    # fm_post = core.std.Crop(fm_post, left=extra_pad, right=extra_pad, top=extra_pad, bottom=extra_pad)
+    # return fm_post
+
     # mask flat areas with block matching artifacts/wrong motion and overlay original
     fm_pre  = core.std.ShufflePlanes(ref, planes=0, colorfamily=vs.GRAY)
     fm_pre  = core.tcanny.TCanny(fm_pre, op=3, mode=1, sigma=0.1, scale=5.0, t_h=8.0, t_l=1.0, opt=1) # mask textures pre temporalfix
     fm_pre  = core.std.Median(fm_pre, planes=0)
     fm_pre  = core.std.Invert(fm_pre) # invert for flat areas instead
+
     fm_diff = core.std.MakeDiff(fm_post, fm_pre) # compare masks to check if there is now more texture than before, which suggests artifacts
     fm_diff = core.std.Levels(fm_diff, max_in=32768, max_out=65535) # only use part of mask were textures increased
     fm_diff = core.std.Invert(fm_diff)
+
+    # fm_diff = core.resize.Point(fm_diff, width=ref_width, height=ref_height)
+    # fm_diff = core.std.Crop(fm_diff, left=extra_pad, right=extra_pad, top=extra_pad, bottom=extra_pad)
+    # return fm_diff
+
     clip    = core.std.MaskedMerge(clip, ref, fm_diff, planes=0) # use mask to overlay original
 
     # overlay original in areas with large motion to fix blending/ghosting/warping
@@ -449,7 +506,6 @@ def vs_temporalfix(clip, strength=400, tr=6, denoise=False, exclude=None, debug=
             orig = core.std.Levels(orig, gamma=2)
         clip = ExcludeRegions(clip, orig, exclude=exclude)
 
-    # return result
     return clip
 
 
